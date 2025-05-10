@@ -70,6 +70,28 @@ const userSchema = new mongoose.Schema<IUser>(
     }
 );
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     User:
+ *       type: object
+ *       properties:
+ *         userId:
+ *           type: string
+ *         email:
+ *           type: string
+ *         phone:
+ *           type: string
+ *         name:
+ *           type: string
+ *         isEmailVerified:
+ *           type: boolean
+ *         isPhoneVerified:
+ *           type: boolean
+ *         userProfileImage:
+ *           type: string
+ */
 userSchema.methods.getData = function () {
     return {
         userId: this._id,

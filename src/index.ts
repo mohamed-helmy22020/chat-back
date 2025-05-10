@@ -11,6 +11,7 @@ import errorHandlerMiddleware from "./middleware/error-handler";
 import notFoundMiddleware from "./middleware/not-found";
 import { attachIO, setSocketIO } from "./middleware/socketMiddleware";
 import authRouter from "./routes/auth";
+import swaggerDocs from "./utils/swagger";
 const app = express();
 const httpServer = http.createServer(app);
 const io = new Server(httpServer, {
@@ -37,6 +38,10 @@ app.get("/", (req, res) => {
     res.send("E-Learning Api");
 });
 
+//Swagger
+swaggerDocs(app);
+
+//Routes
 app.use(express.json());
 app.use("/api/auth", authRouter);
 

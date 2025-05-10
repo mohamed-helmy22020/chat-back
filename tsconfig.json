@@ -6,7 +6,8 @@
         "outDir": "dist",
         "sourceMap": true,
         "noImplicitAny": true,
-        "typeRoots": ["./src/types"]
+        "typeRoots": ["./src/types"],
+        "resolveJsonModule": true
     },
     "include": ["src/**/*"],
     "exclude": ["./node_modules"]
