@@ -60,9 +60,7 @@ const start = async () => {
         httpServer.listen(port, () => {
             console.log("=============================================");
             console.log(`Server is listening on http://localhost:${port}/`);
-            console.log(
-                "Swagger docs available at http://localhost:5000/api-docs"
-            );
+            console.log("Swagger docs available at http://localhost:5000/docs");
         });
     } catch (error) {
         console.log(error);

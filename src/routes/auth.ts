@@ -13,6 +13,7 @@ const authRouter = express.Router();
  *   post:
  *     tags:
  *       - Auth
+ *     security: []
  *     summary: Login
  *     requestBody:
  *       required: true
@@ -63,6 +64,7 @@ authRouter.route("/login").post(login);
  *   post:
  *     tags:
  *       - Auth
+ *     security: []
  *     summary: sign up
  *     requestBody:
  *       required: true
@@ -121,6 +123,7 @@ authRouter.route("/register").post(register);
  *   post:
  *     tags:
  *       - Auth
+ *     security: []
  *     summary: Send reset password code
  *     requestBody:
  *       required: true
@@ -166,6 +169,7 @@ authRouter.route("/send-reset-code").post(sendResetPasswordCode);
  *   post:
  *     tags:
  *       - Auth
+ *     security: []
  *     summary: Reset password
  *     requestBody:
  *       required: true

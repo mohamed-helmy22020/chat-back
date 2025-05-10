@@ -10,6 +10,12 @@ const options: swaggerJsdoc.Options = {
             title: "Chat APP API",
             version,
         },
+        servers: [
+            {
+                url: "http://localhost:5000/api",
+                description: "Development server",
+            },
+        ],
         components: {
             securitySchemes: {
                 bearerAuth: {
