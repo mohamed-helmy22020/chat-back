@@ -2,7 +2,7 @@ import { NextFunction } from "express";
 
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import mongoose from "mongoose";
+import mongoose, { Document } from "mongoose";
 
 export interface IUser extends Document {
     name: string;
@@ -15,8 +15,7 @@ export interface IUser extends Document {
     phoneVerificationCode: number;
     resetPasswordCode: number;
     userProfileImage: string;
-    favCourses: mongoose.Schema.Types.ObjectId[];
-    enrolledCourses: mongoose.Schema.Types.ObjectId[];
+    blockList: mongoose.Types.ObjectId[];
     createAccessToken: () => string;
     encryptPassword: (password: string) => Promise<string>;
     comparePassword: (candidatePassword: string) => Promise<boolean>;
@@ -63,6 +62,11 @@ const userSchema = new mongoose.Schema<IUser>(
         userProfileImage: {
             type: String,
             default: "",
+        },
+        blockList: {
+            type: [mongoose.Types.ObjectId],
+            ref: "User",
+            default: [],
         },
     },
     {
@@ -140,4 +144,4 @@ userSchema.methods.comparePassword = async function (
     return isMatch;
 };
 
-export default mongoose.model("User", userSchema);
+export default mongoose.model<IUser & Document>("User", userSchema);

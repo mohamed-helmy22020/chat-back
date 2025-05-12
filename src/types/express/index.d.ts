@@ -1,4 +1,5 @@
 import "express";
+import { IUser } from "models/User";
 import { Server } from "socket.io";
 
 declare global {
@@ -6,7 +7,7 @@ declare global {
         interface Request {
             io: Server;
             _query?: any;
-            user?: any;
+            user?: IUser;
         }
     }
 }
