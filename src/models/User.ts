@@ -109,6 +109,9 @@ const userSchema = new mongoose.Schema<IUser>(
  *         isFriend:
  *           type: boolean
  *           default: false
+ *         isSentRequest:
+ *           type: boolean
+ *           default: false
  */
 userSchema.methods.getData = function (type: string = "all") {
     if (type === "userRequest") {

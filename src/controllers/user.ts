@@ -290,14 +290,14 @@ export const findUser = async (req: Request, res: Response) => {
             { from: fetchedUser._id, to: user._id },
             { from: user._id, to: fetchedUser._id },
         ],
-        status: "accepted",
     });
 
     res.status(StatusCodes.OK).json({
         success: true,
         user: {
             ...fetchedUser.getData("findUser"),
-            isFriend: !!isFriend,
+            isFriend: !!isFriend && isFriend.status === "accepted",
+            isSentRequest: !!isFriend && isFriend.status === "pending",
         },
     });
 };
