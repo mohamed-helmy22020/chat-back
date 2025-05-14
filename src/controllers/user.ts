@@ -250,3 +250,54 @@ export const getSentRequests = async (req: Request, res: Response) => {
         sentRequests,
     });
 };
+
+export const getBlockedList = async (req: Request, res: Response) => {
+    const user = req.user;
+    const fetchedUsers = await User.find({
+        _id: { $in: user.blockList },
+    });
+
+    const blockedUsers = fetchedUsers.map((user) =>
+        user.getData("userRequest")
+    );
+
+    res.status(StatusCodes.OK).json({
+        success: true,
+        blockedUsers,
+    });
+};
+
+export const findUser = async (req: Request, res: Response) => {
+    const user = req.user;
+    const { userEmail } = req.params;
+
+    const fetchedUser = await User.findOne({
+        email: userEmail,
+    });
+    if (!fetchedUser) {
+        throw new NotFoundError("User not found");
+    }
+    const isBlocked =
+        fetchedUser.blockList.includes(user._id as mongoose.Types.ObjectId) ||
+        user.blockList.includes(fetchedUser._id as mongoose.Types.ObjectId);
+
+    if (isBlocked) {
+        throw new NotFoundError("User not found");
+    }
+
+    const isFriend = await FriendRequest.findOne({
+        $or: [
+            { from: fetchedUser._id, to: user._id },
+            { from: user._id, to: fetchedUser._id },
+        ],
+        status: "accepted",
+    });
+
+    res.status(StatusCodes.OK).json({
+        success: true,
+        user: {
+            ...fetchedUser.getData("findUser"),
+            isFriend: !!isFriend,
+        },
+    });
+};

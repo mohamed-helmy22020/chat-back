@@ -19,7 +19,7 @@ export interface IUser extends Document {
     createAccessToken: () => string;
     encryptPassword: (password: string) => Promise<string>;
     comparePassword: (candidatePassword: string) => Promise<boolean>;
-    getData: () => any;
+    getData: (type?: string) => any;
 }
 
 const userSchema = new mongoose.Schema<IUser>(
@@ -95,8 +95,37 @@ const userSchema = new mongoose.Schema<IUser>(
  *           type: boolean
  *         userProfileImage:
  *           type: string
+ *     FindUser:
+ *       type: object
+ *       properties:
+ *         userId:
+ *           type: string
+ *         email:
+ *           type: string
+ *         name:
+ *           type: string
+ *         userProfileImage:
+ *           type: string
+ *         isFriend:
+ *           type: boolean
+ *           default: false
  */
-userSchema.methods.getData = function () {
+userSchema.methods.getData = function (type: string = "all") {
+    if (type === "userRequest") {
+        return {
+            userId: this._id,
+            name: this.name,
+            userProfileImage: this.userProfileImage,
+        };
+    }
+    if (type === "findUser") {
+        return {
+            userId: this._id,
+            email: this.email,
+            name: this.name,
+            userProfileImage: this.userProfileImage,
+        };
+    }
     return {
         userId: this._id,
         email: this.email,

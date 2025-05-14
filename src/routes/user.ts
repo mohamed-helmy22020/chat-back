@@ -9,6 +9,8 @@ import {
     addFriend,
     blockUser,
     deleteFriend,
+    findUser,
+    getBlockedList,
     getFriendRequests,
     getFriendsList,
     getSentRequests,
@@ -356,4 +358,74 @@ userRouter.route("/friends").get(getFriendsList);
 userRouter.route("/friend-requests").get(getFriendRequests);
 userRouter.route("/sent-requests").get(getSentRequests);
 
+/**
+ * @openapi
+ * /user/find/{userEmail}:
+ *   get:
+ *     tags:
+ *       - User
+ *     summary: find user
+ *     parameters:
+ *       - in: path
+ *         name: userEmail
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: user email
+ *     responses:
+ *       200:
+ *         description: find user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 user:
+ *                   $ref: '#/components/schemas/FindUser'
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Not Found
+ *       500:
+ *         description: Internal Server Error
+ */
+userRouter.route("/find/:userEmail").get(findUser);
+
+/**
+ * @openapi
+ * /user/blocked:
+ *   get:
+ *     tags:
+ *       - User
+ *     summary: get blocked list
+ *     responses:
+ *       200:
+ *         description: get blocked list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 blockedUsers:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/UserRequest'
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Not Found
+ *       500:
+ *         description: Internal Server Error
+ */
+userRouter.route("/blocked").get(getBlockedList);
 export default userRouter;
