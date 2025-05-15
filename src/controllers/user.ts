@@ -79,6 +79,21 @@ export const blockUser = async (req: Request, res: Response) => {
     if (user.blockList.includes(new mongoose.Types.ObjectId(userId))) {
         throw new BadRequestError("User already blocked");
     }
+
+    const isFriend = await FriendRequest.findOne({
+        $or: [
+            { from: userId, to: user._id },
+            { from: user._id, to: userId },
+        ],
+    });
+
+    if (
+        isFriend &&
+        (isFriend.status === "accepted" || isFriend.status === "pending")
+    ) {
+        isFriend.status = "rejected";
+        await isFriend.save();
+    }
     user.blockList.push(new mongoose.Types.ObjectId(userId));
     await user.save();
 
@@ -127,8 +142,11 @@ export const addFriend = async (req: Request, res: Response) => {
             { from: user._id, to: userId },
         ],
     });
-    console.log({ friendRequest });
-    if (!friendRequest) {
+
+    if (friendRequest) {
+        friendRequest.from = new mongoose.Types.ObjectId(user._id.toString());
+        friendRequest.to = new mongoose.Types.ObjectId(userId);
+    } else {
         friendRequest = await FriendRequest.create({
             from: user._id,
             to: new mongoose.Types.ObjectId(userId),
@@ -164,7 +182,7 @@ export const addFriend = async (req: Request, res: Response) => {
 
 export const deleteFriend = async (req: Request, res: Response) => {
     const user = req.user;
-    const userId = req.params;
+    const { userId } = req.params;
 
     let friendRequest = await FriendRequest.findOne({
         $or: [
@@ -229,6 +247,29 @@ export const acceptFriendRequest = async (req: Request, res: Response) => {
         throw new NotFoundError("Friend request not found");
     }
     friendRequest.status = "accepted";
+    await friendRequest.save();
+
+    res.status(StatusCodes.OK).json({ success: true });
+};
+
+export const cancelFriendRequest = async (req: Request, res: Response) => {
+    const user = req.user;
+    const { userId } = req.params;
+    if (!userId || !isValidObjectId(userId)) {
+        throw new BadRequestError("userId is required");
+    }
+    const friendRequest = await FriendRequest.findOne({
+        $or: [
+            { from: userId, to: user._id },
+            { from: user._id, to: userId },
+        ],
+        status: "pending",
+    });
+
+    if (!friendRequest) {
+        throw new NotFoundError("Friend request not found");
+    }
+    friendRequest.status = "rejected";
     await friendRequest.save();
 
     res.status(StatusCodes.OK).json({ success: true });

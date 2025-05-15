@@ -8,6 +8,7 @@ import {
     acceptFriendRequest,
     addFriend,
     blockUser,
+    cancelFriendRequest,
     deleteFriend,
     findUser,
     getBlockedList,
@@ -266,6 +267,42 @@ userRouter.route("/friend/:userId").post(addFriend).delete(deleteFriend);
  *         description: Internal Server Error
  */
 userRouter.route("/accept-friend/:userId").post(acceptFriendRequest);
+
+/**
+ * @openapi
+ * /user/cancel-friend-request/{userId}:
+ *   delete:
+ *     tags:
+ *       - User
+ *     summary: cancel friend request
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: user id
+ *     responses:
+ *       200:
+ *         description: cancel friend request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Not Found
+ *       500:
+ *         description: Internal Server Error
+ */
+userRouter.route("/cancel-friend-request/:userId").delete(cancelFriendRequest);
 
 /**
  * @openapi

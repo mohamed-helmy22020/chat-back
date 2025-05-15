@@ -36,7 +36,7 @@ app.use(helmet());
 app.use(cors());
 
 app.get("/", (req, res) => {
-    res.send("E-Learning Api");
+    res.send("Chat app Api");
 });
 
 //Swagger
