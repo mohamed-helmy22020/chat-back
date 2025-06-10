@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import mongoose, { Document } from "mongoose";
 
-export interface IUser extends Document {
+export interface IUser extends mongoose.Document {
     name: string;
     email: string;
     password: string;

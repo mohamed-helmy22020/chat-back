@@ -1,0 +1,131 @@
+import { Request, Response } from "express";
+import { StatusCodes } from "http-status-codes";
+import mongoose from "mongoose";
+import { DefaultEventsMap, Socket } from "socket.io";
+import { BadRequestError, UnauthenticatedError } from "../errors";
+import { getIO } from "../middleware/socketMiddleware";
+import Conversation, { ConversationType } from "../models/Conversation";
+import Message, { MessageType } from "../models/Message";
+import User from "../models/User";
+
+const getPrivateConversation = async (
+    userIdA: mongoose.Types.ObjectId,
+    userIdB: mongoose.Types.ObjectId
+) => {
+    const [id1, id2] = [userIdA.toString(), userIdB.toString()].sort();
+
+    let conversation = await Conversation.findOne({
+        participants: {
+            $size: 2,
+            $all: [id1, id2],
+        },
+    }).populate("lastMessage", "from to text seen");
+
+    if (!conversation) {
+        conversation = await Conversation.create({
+            participants: [id1, id2],
+        }).then((conv) => conv.populate("lastMessage", "from to text seen"));
+    }
+
+    return conversation as unknown as ConversationType;
+};
+
+export const sendMessage = async (
+    socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
+    to: mongoose.Types.ObjectId,
+    text: string
+) => {
+    const io = getIO();
+    const user = (socket.request as Request).user;
+    const chatNamespace = io.of("/api/chat");
+    const otherSide = await User.findById(to);
+    if (!otherSide) {
+        throw new BadRequestError("No user with this id");
+    }
+    const conversation = await getPrivateConversation(
+        user._id as mongoose.Types.ObjectId,
+        to
+    );
+    const messageData = {
+        conversationId: conversation._id,
+        from: user._id,
+        to,
+        text,
+    };
+    const message = await Message.create(messageData);
+
+    conversation.lastMessage = new mongoose.Types.ObjectId(
+        message._id.toString()
+    );
+    await conversation.save();
+    chatNamespace
+        .to(`user:${to}`)
+        .to(`user:${user._id.toString()}`)
+        .emit("receiveMessage", {
+            success: true,
+            message: message.getData(),
+            conversation: {
+                ...conversation.getData(),
+                lastMessage: message.getData(),
+            },
+        });
+};
+
+export const getAllConversations = (req: Request, res: Response) => {
+    const user = req.user;
+    Conversation.find({
+        participants: {
+            $in: [user._id],
+        },
+    })
+        .populate("lastMessage", "from to text seen createdAt updatedAt")
+        .populate("participants", "name userProfileImage")
+        .sort("-updatedAt")
+        .then((conversations) => {
+            res.status(200).json({
+                success: true,
+                conversations: conversations.map((conv) => conv.getData()),
+            });
+        });
+};
+
+export const getConversationMessages = async (req: Request, res: Response) => {
+    const user = req.user;
+    const { userId } = req.params;
+    const otherSide = await User.findById(userId);
+    if (!otherSide) {
+        throw new BadRequestError("No user with this id");
+    }
+    const conversation = await getPrivateConversation(
+        user._id as mongoose.Types.ObjectId,
+        new mongoose.Types.ObjectId(userId)
+    );
+    const conversationLastMessage =
+        conversation.lastMessage as unknown as MessageType;
+
+    if (
+        !conversation.participants.includes(user._id as mongoose.Types.ObjectId)
+    ) {
+        throw new UnauthenticatedError(
+            "You can only get your conversations messages"
+        );
+    }
+    if (
+        conversationLastMessage &&
+        !conversationLastMessage?.seen &&
+        conversationLastMessage?.from.toString() !== user._id.toString()
+    ) {
+        conversationLastMessage.seen = true;
+        await conversationLastMessage.save();
+    }
+    const conversationMessages = (
+        await Message.find({
+            conversationId: conversation._id,
+        })
+    ).map((c) => c.getData());
+
+    res.status(StatusCodes.OK).json({
+        success: true,
+        messages: conversationMessages,
+    });
+};

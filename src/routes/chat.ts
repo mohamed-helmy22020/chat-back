@@ -1,0 +1,77 @@
+import express from "express";
+import {
+    getAllConversations,
+    getConversationMessages,
+} from "../controllers/chat";
+const chatRouter = express.Router();
+
+/**
+ * @openapi
+ * /chat/conversations:
+ *   get:
+ *     tags:
+ *       - Chat
+ *     security:
+ *       - bearerAuth: []
+ *     summary: get all conversations
+ *     responses:
+ *       200:
+ *         description: get all conversations
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 conversations:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Conversation'
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Not Found
+ *       500:
+ *         description: Internal Server Error
+ */
+chatRouter.route("/conversations").get(getAllConversations);
+
+/**
+ * @openapi
+ * /chat/conversations/{userId}:
+ *   get:
+ *     tags:
+ *       - Chat
+ *     security:
+ *       - bearerAuth: []
+ *     summary: get conversation messages
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: get conversation messages
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 messages:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Message'
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Not Found
+ *       500:
+ *         description: Internal Server Error
+ */
+chatRouter.route("/conversations/:userId").get(getConversationMessages);
+export default chatRouter;

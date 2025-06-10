@@ -13,24 +13,25 @@ const authenticateUser = async (
     if (!isHandshake) {
         return next();
     }
-
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        return next(new UnauthenticatedError("You are not authenticated"));
-    }
-    const token = authHeader.split(" ")[1];
     try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith("Bearer ")) {
+            throw new UnauthenticatedError("You are not authenticated");
+        }
+        const token = authHeader.split(" ")[1];
+
         const payload = jwt.verify(
             token,
             process.env.ACCESS_TOKEN_SECRET
         ) as CustomJwtPayload;
         const user = await User.findOne({ _id: payload.userId });
         if (!user) {
-            return next(new UnauthenticatedError("You are not authenticated"));
+            throw new UnauthenticatedError("You are not authenticated");
         }
         req.user = user;
         next();
     } catch (error) {
+        console.log("You are not authenticated");
         return next(new UnauthenticatedError("You are not authenticated"));
     }
 };

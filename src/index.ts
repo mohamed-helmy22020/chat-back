@@ -11,7 +11,9 @@ import errorHandlerMiddleware from "./middleware/error-handler";
 import notFoundMiddleware from "./middleware/not-found";
 import { attachIO, setSocketIO } from "./middleware/socketMiddleware";
 import authRouter from "./routes/auth";
+import chatRouter from "./routes/chat";
 import userRouter from "./routes/user";
+import registerSocketNamespaces from "./sockets";
 import swaggerDocs from "./utils/swagger";
 const app = express();
 const httpServer = http.createServer(app);
@@ -46,6 +48,7 @@ swaggerDocs(app);
 app.use(express.json());
 app.use("/api/auth", authRouter);
 app.use("/api/user", authenticateUser, userRouter);
+app.use("/api/chat", authenticateUser, chatRouter);
 
 app.use(notFoundMiddleware);
 app.use(errorHandlerMiddleware);
@@ -58,6 +61,7 @@ const start = async () => {
         await connectDB(process.env.MONGO_URI);
 
         // Load socket namespaces
+        registerSocketNamespaces(io);
 
         httpServer.listen(port, () => {
             console.log("=============================================");
