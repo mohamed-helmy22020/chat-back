@@ -123,7 +123,7 @@ userSchema.methods.getData = function (type: string = "all") {
     }
     if (type === "findUser") {
         return {
-            userId: this._id,
+            _id: this._id,
             email: this.email,
             name: this.name,
             userProfileImage: this.userProfileImage,

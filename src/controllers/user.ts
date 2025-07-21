@@ -143,10 +143,7 @@ export const addFriend = async (req: Request, res: Response) => {
         ],
     });
 
-    if (friendRequest) {
-        friendRequest.from = new mongoose.Types.ObjectId(user._id.toString());
-        friendRequest.to = new mongoose.Types.ObjectId(userId);
-    } else {
+    if (!friendRequest) {
         friendRequest = await FriendRequest.create({
             from: user._id,
             to: new mongoose.Types.ObjectId(userId),
@@ -154,21 +151,12 @@ export const addFriend = async (req: Request, res: Response) => {
         res.status(StatusCodes.OK).json({ success: true });
         return;
     }
+
     if (friendRequest.status === "accepted") {
         throw new BadRequestError("You are already friends");
     }
-    if (
-        friendRequest.to === new mongoose.Types.ObjectId(userId) &&
-        friendRequest.status === "pending"
-    ) {
-        friendRequest.status = "accepted";
-        await friendRequest.save();
-    }
-    console.log(friendRequest.from, user._id);
-    if (
-        friendRequest.from.toString() === user._id.toString() &&
-        friendRequest.status === "pending"
-    ) {
+
+    if (friendRequest.status === "pending") {
         throw new BadRequestError("Friend request already sent");
     }
 
@@ -338,7 +326,14 @@ export const findUser = async (req: Request, res: Response) => {
         user: {
             ...fetchedUser.getData("findUser"),
             isFriend: !!isFriend && isFriend.status === "accepted",
-            isSentRequest: !!isFriend && isFriend.status === "pending",
+            isSentRequest:
+                !!isFriend &&
+                isFriend.from.toString() === user._id.toString() &&
+                isFriend.status === "pending",
+            isReceivedRequest:
+                !!isFriend &&
+                isFriend.from.toString() !== user._id.toString() &&
+                isFriend.status === "pending",
         },
     });
 };
