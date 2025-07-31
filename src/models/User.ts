@@ -16,6 +16,7 @@ export interface IUser extends mongoose.Document {
     resetPasswordCode: number;
     userProfileImage: string;
     blockList: mongoose.Types.ObjectId[];
+    bio: string;
     createAccessToken: () => string;
     encryptPassword: (password: string) => Promise<string>;
     comparePassword: (candidatePassword: string) => Promise<boolean>;
@@ -68,6 +69,10 @@ const userSchema = new mongoose.Schema<IUser>(
             ref: "User",
             default: [],
         },
+        bio: {
+            type: String,
+            default: "",
+        },
     },
     {
         timestamps: true,
@@ -81,7 +86,7 @@ const userSchema = new mongoose.Schema<IUser>(
  *     User:
  *       type: object
  *       properties:
- *         userId:
+ *         _id:
  *           type: string
  *         email:
  *           type: string
@@ -116,9 +121,10 @@ const userSchema = new mongoose.Schema<IUser>(
 userSchema.methods.getData = function (type: string = "all") {
     if (type === "userRequest") {
         return {
-            userId: this._id,
+            _id: this._id,
             name: this.name,
             userProfileImage: this.userProfileImage,
+            bio: this.bio,
         };
     }
     if (type === "findUser") {
@@ -127,10 +133,11 @@ userSchema.methods.getData = function (type: string = "all") {
             email: this.email,
             name: this.name,
             userProfileImage: this.userProfileImage,
+            bio: this.bio,
         };
     }
     return {
-        userId: this._id,
+        _id: this._id,
         email: this.email,
         phone: this.phone,
         name: this.name,
@@ -138,6 +145,7 @@ userSchema.methods.getData = function (type: string = "all") {
         isPhoneVerified: this.isPhoneVerified,
         userProfileImage: this.userProfileImage,
         stripeCustomerId: this.stripeCustomerId,
+        bio: this.bio,
     };
 };
 

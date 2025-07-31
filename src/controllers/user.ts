@@ -17,7 +17,7 @@ export const getUserData = async (req: Request, res: Response) => {
 
 export const updateUserData = async (req: Request, res: Response) => {
     const user = req.user;
-    const { name, email, newPassword, phone, currentPassword } = req.body;
+    const { name, email, newPassword, phone, currentPassword, bio } = req.body;
     const { file: profilePicture } = req;
 
     const isPasswordCorrect = currentPassword
@@ -26,8 +26,14 @@ export const updateUserData = async (req: Request, res: Response) => {
 
     const userData: any = {};
 
-    if (name) {
+    if (name && name.length <= 25) {
         userData.name = name;
+    } else if (name && name.length > 25) {
+        throw new BadRequestError("Name should be less than 25 characters");
+    }
+
+    if (bio) {
+        userData.bio = bio;
     }
 
     if (email || newPassword || phone) {
