@@ -2,8 +2,8 @@ import { Request } from "express";
 
 const { BadRequestError } = require("../errors");
 
-const allowedPictureTypes = ["image/jpeg", "image/png", "image/gif"];
-const allowedVideoTypes = [
+export const allowedPictureTypes = ["image/jpeg", "image/png", "image/gif"];
+export const allowedVideoTypes = [
     "video/mp4",
     "video/mov",
     "video/avi",
@@ -43,6 +43,44 @@ export const checkPicture = {
             return cb(
                 new BadRequestError(
                     "File size exceeds the maximum allowed size of 5 MB."
+                ),
+                false
+            );
+        }
+
+        return cb(null, true);
+    },
+};
+
+export const checkStatus = {
+    fileFilter: (
+        req: Request,
+        file: Express.Multer.File,
+        cb: (error: Error | null, acceptFile: boolean) => void
+    ) => {
+        if (
+            file &&
+            !allowedPictureTypes.includes(file.mimetype) &&
+            !allowedVideoTypes.includes(file.mimetype)
+        ) {
+            return cb(
+                new BadRequestError(
+                    "Invalid file type. Only images and videos are allowed."
+                ),
+                false
+            );
+        }
+
+        const isPicture = allowedPictureTypes.includes(file.mimetype);
+        const isVideo = allowedVideoTypes.includes(file.mimetype);
+
+        if (
+            (file && isPicture && file.size > MAX_PHOTO_SIZE) ||
+            (file && isVideo && file.size > MAX_VIDEO_SIZE)
+        ) {
+            return cb(
+                new BadRequestError(
+                    "File size exceeds the maximum allowed size."
                 ),
                 false
             );

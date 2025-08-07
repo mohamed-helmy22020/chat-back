@@ -12,6 +12,7 @@ import notFoundMiddleware from "./middleware/not-found";
 import { attachIO, setSocketIO } from "./middleware/socketMiddleware";
 import authRouter from "./routes/auth";
 import chatRouter from "./routes/chat";
+import statusRouter from "./routes/status";
 import userRouter from "./routes/user";
 import registerSocketNamespaces from "./sockets";
 import swaggerDocs from "./utils/swagger";
@@ -35,7 +36,7 @@ app.use(
     })
 );
 app.use(helmet());
-app.use(cors());
+app.use(cors({ origin: "http://localhost:3000" }));
 
 app.get("/", (req, res) => {
     res.send("Chat app Api");
@@ -49,6 +50,7 @@ app.use(express.json());
 app.use("/api/auth", authRouter);
 app.use("/api/user", authenticateUser, userRouter);
 app.use("/api/chat", authenticateUser, chatRouter);
+app.use("/api/status", authenticateUser, statusRouter);
 
 app.use(notFoundMiddleware);
 app.use(errorHandlerMiddleware);
