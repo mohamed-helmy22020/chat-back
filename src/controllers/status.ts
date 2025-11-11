@@ -17,8 +17,12 @@ export const getUserStatuses = async (req: Request, res: Response) => {
 
     const statuses = await Status.find({ userId: user._id })
         .active()
-        .sort({ createdAt: 1 });
-    res.json(statuses.map((status) => status.getData()));
+        .sort({ createdAt: 1 })
+        .populate("userId", "_id name userProfileImage");
+    res.json({
+        success: true,
+        statuses: statuses.map((status) => status.getData()),
+    });
 };
 
 export const getFriendsStatuses = async (req: Request, res: Response) => {
@@ -40,20 +44,22 @@ export const getFriendsStatuses = async (req: Request, res: Response) => {
 
     const statuses = await Status.find({ userId: { $in: friends } })
         .active()
-        .sort({ createdAt: 1 });
-    res.json(
-        statuses.map((status) => ({
+        .sort({ createdAt: 1 })
+        .populate("userId", "_id name userProfileImage");
+    res.json({
+        success: true,
+        statuses: statuses.map((status) => ({
             ...status.getData("friend"),
             isSeen: status.viewers.includes(user._id),
-        }))
-    );
+        })),
+    });
 };
 
 export const createStatus = async (req: Request, res: Response) => {
     const user = req.user;
     const content = req.body?.content;
     const { file: statusMedia } = req;
-    console.log({ statusMedia });
+    console.log({ content, statusMedia });
     if (!content && !statusMedia) {
         res.status(StatusCodes.BAD_REQUEST).json({
             message: "Content or media is required",
@@ -99,7 +105,10 @@ export const createStatus = async (req: Request, res: Response) => {
 
     await status.save();
 
-    res.status(StatusCodes.CREATED).json(status.getData());
+    res.status(StatusCodes.CREATED).json({
+        success: true,
+        status: status.getData(),
+    });
 };
 
 export const seeStatus = async (req: Request, res: Response) => {

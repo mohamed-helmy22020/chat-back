@@ -45,6 +45,11 @@ export const handleUploadVideoFromBuffer = async (
                     resource_type: "video",
                     public_id: options.public_id,
                     folder: options.folder,
+                    transformation: [
+                        {
+                            duration: 60,
+                        },
+                    ],
                 },
                 (error, uploadResult) => {
                     if (error) {
