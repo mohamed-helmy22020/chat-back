@@ -11,7 +11,7 @@ import User from "../models/User";
 const getPrivateConversation = async (
     userIdA: mongoose.Types.ObjectId,
     userIdB: mongoose.Types.ObjectId
-) => {
+): Promise<ConversationType> => {
     const [id1, id2] = [userIdA.toString(), userIdB.toString()].sort();
 
     let conversation = await Conversation.findOne({
@@ -57,7 +57,10 @@ export const sendMessage = async (
     conversation.lastMessage = new mongoose.Types.ObjectId(
         message._id.toString()
     );
-    await conversation.save();
+    await (
+        await conversation.save()
+    ).populate("participants", "name userProfileImage");
+
     chatNamespace
         .to(`user:${to}`)
         .to(`user:${user._id.toString()}`)
@@ -69,6 +72,31 @@ export const sendMessage = async (
                 lastMessage: message.getData(),
             },
         });
+    chatNamespace.to(`user:${to}`).emit("typing", {
+        conversationId: conversation._id,
+        isTyping: false,
+    });
+};
+export const sendTyping = async (
+    socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
+    to: mongoose.Types.ObjectId,
+    isTyping: boolean
+) => {
+    const io = getIO();
+    const user = (socket.request as Request).user;
+    const chatNamespace = io.of("/api/chat");
+    const otherSide = await User.findById(to);
+    if (!otherSide) {
+        throw new BadRequestError("No user with this id");
+    }
+    const conversation = await getPrivateConversation(
+        user._id as mongoose.Types.ObjectId,
+        to
+    );
+    chatNamespace.to(`user:${to}`).emit("typing", {
+        conversationId: conversation._id,
+        isTyping,
+    });
 };
 
 export const getAllConversations = (req: Request, res: Response) => {
@@ -91,14 +119,14 @@ export const getAllConversations = (req: Request, res: Response) => {
 
 export const getConversationMessages = async (req: Request, res: Response) => {
     const user = req.user;
-    const { userId } = req.params;
-    const otherSide = await User.findById(userId);
+    const { userId: otherSideUserId } = req.params;
+    const otherSide = await User.findById(otherSideUserId);
     if (!otherSide) {
         throw new BadRequestError("No user with this id");
     }
     const conversation = await getPrivateConversation(
         user._id as mongoose.Types.ObjectId,
-        new mongoose.Types.ObjectId(userId)
+        new mongoose.Types.ObjectId(otherSideUserId)
     );
     const conversationLastMessage =
         conversation.lastMessage as unknown as MessageType;

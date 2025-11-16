@@ -1,6 +1,6 @@
 import { type Request } from "express";
 import { Server } from "socket.io";
-import { sendMessage } from "../controllers/chat";
+import { sendMessage, sendTyping } from "../controllers/chat";
 
 const registerChatNamespace = (io: Server) => {
     const chatNamespace = io.of("/api/chat");
@@ -20,6 +20,16 @@ const registerChatNamespace = (io: Server) => {
         socket.on("sendPrivateMessage", async (to, text) => {
             try {
                 await sendMessage(socket, to, text);
+            } catch (error) {
+                chatNamespace
+                    .to(`user:${user._id.toString()}`)
+                    .emit("errors", error.message);
+            }
+        });
+
+        socket.on("typing", async (to, isTyping) => {
+            try {
+                await sendTyping(socket, to, isTyping);
             } catch (error) {
                 chatNamespace
                     .to(`user:${user._id.toString()}`)
