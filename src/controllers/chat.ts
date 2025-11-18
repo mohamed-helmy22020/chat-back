@@ -149,11 +149,53 @@ export const getConversationMessages = async (req: Request, res: Response) => {
     const conversationMessages = (
         await Message.find({
             conversationId: conversation._id,
-        })
+        }).populate("reacts.user", "name userProfileImage")
     ).map((c) => c.getData());
 
     res.status(StatusCodes.OK).json({
         success: true,
         messages: conversationMessages,
+    });
+};
+
+export const addMessageReaction = async (req: Request, res: Response) => {
+    const user = req.user;
+    const { messageId } = req.params;
+    const { react } = req.body;
+    if (!messageId || !react) {
+        throw new BadRequestError("Please provide messageId and react");
+    }
+    const message = await Message.findById(messageId);
+    if (!message) {
+        throw new BadRequestError("No message with this id");
+    }
+    const conversation = await Conversation.findById(message.conversationId);
+    if (
+        !conversation.participants.includes(user._id as mongoose.Types.ObjectId)
+    ) {
+        throw new UnauthenticatedError("You can only react to your messages");
+    }
+    const existingReactIndex = message.reacts.findIndex(
+        (r) => r.user.toString() === user._id.toString()
+    );
+    if (existingReactIndex !== -1) {
+        if (message.reacts[existingReactIndex].react === react) {
+            message.reacts.splice(existingReactIndex, 1);
+        } else {
+            message.reacts[existingReactIndex].react = react;
+        }
+    } else {
+        message.reacts.push({
+            react,
+            user: user._id as mongoose.Types.ObjectId,
+        });
+    }
+    await (
+        await message.save()
+    ).populate("reacts.user", "name userProfileImage");
+
+    res.status(StatusCodes.OK).json({
+        success: true,
+        message: message.getData(),
     });
 };

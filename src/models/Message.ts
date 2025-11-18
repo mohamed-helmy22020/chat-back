@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { ReactType } from "types";
 
 export interface MessageType extends mongoose.Document {
     conversationId: mongoose.Types.ObjectId;
@@ -6,6 +7,7 @@ export interface MessageType extends mongoose.Document {
     to: mongoose.Types.ObjectId;
     text: string;
     seen: boolean;
+    reacts: ReactType[];
     getData: () => any;
 }
 
@@ -33,6 +35,29 @@ const messageSchema = new mongoose.Schema(
         seen: {
             type: Boolean,
             default: false,
+        },
+        reacts: {
+            type: [
+                {
+                    react: {
+                        type: String,
+                        enum: [
+                            "Like",
+                            "Dislike",
+                            "Love",
+                            "Laugh",
+                            "Wow",
+                            "Sad",
+                            "Angry",
+                        ],
+                    },
+                    user: {
+                        type: mongoose.Schema.Types.ObjectId,
+                        ref: "User",
+                        required: [true, "Please provide the user"],
+                    },
+                },
+            ],
         },
     },
     {
@@ -94,6 +119,7 @@ messageSchema.methods.getData = function () {
         to: this.to,
         text: this.text,
         seen: this.seen,
+        reacts: this.reacts,
         createdAt: this.createdAt,
         updatedAt: this.updatedAt,
     };

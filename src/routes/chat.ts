@@ -1,5 +1,6 @@
 import express from "express";
 import {
+    addMessageReaction,
     getAllConversations,
     getConversationMessages,
 } from "../controllers/chat";
@@ -74,4 +75,49 @@ chatRouter.route("/conversations").get(getAllConversations);
  *         description: Internal Server Error
  */
 chatRouter.route("/conversations/:userId").get(getConversationMessages);
+
+/**
+ * @openapi
+ * /chat/message/{messageId}/react:
+ *   post:
+ *     tags:
+ *       - Chat
+ *     security:
+ *       - bearerAuth: []
+ *     summary: react to a message
+ *     parameters:
+ *       - in: path
+ *         name: messageId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               react:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: react to a message
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   $ref: '#/components/schemas/Message'
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Not Found
+ *       500:
+ *         description: Internal Server Error
+ */
+chatRouter.route("/message/:messageId/react").post(addMessageReaction);
 export default chatRouter;
