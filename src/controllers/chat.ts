@@ -199,3 +199,20 @@ export const addMessageReaction = async (req: Request, res: Response) => {
         message: message.getData(),
     });
 };
+
+export const deleteMessage = async (req: Request, res: Response) => {
+    const user = req.user;
+    const { messageId } = req.params;
+    const message = await Message.findById(messageId);
+    if (!message) {
+        throw new BadRequestError("No message with this id");
+    }
+    if (!message.from.equals(user._id as mongoose.Types.ObjectId)) {
+        throw new UnauthenticatedError("You can only delete your messages");
+    }
+    await message.deleteOne();
+    res.status(StatusCodes.OK).json({
+        success: true,
+        message: "Message deleted successfully",
+    });
+};
