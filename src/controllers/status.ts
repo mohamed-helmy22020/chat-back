@@ -40,8 +40,6 @@ export const getFriendsStatuses = async (req: Request, res: Response) => {
         return friend.from;
     });
 
-    console.log(friends);
-
     const statuses = await Status.find({ userId: { $in: friends } })
         .active()
         .sort({ createdAt: 1 })
@@ -59,7 +57,6 @@ export const createStatus = async (req: Request, res: Response) => {
     const user = req.user;
     const content = req.body?.content;
     const { file: statusMedia } = req;
-    console.log({ content, statusMedia });
     if (!content && !statusMedia) {
         res.status(StatusCodes.BAD_REQUEST).json({
             message: "Content or media is required",
@@ -145,7 +142,6 @@ export const deleteStatus = async (req: Request, res: Response) => {
     })
         .active()
         .findOne();
-    console.log(status);
     if (!status) {
         res.status(StatusCodes.NOT_FOUND).json({ message: "Status not found" });
         return;

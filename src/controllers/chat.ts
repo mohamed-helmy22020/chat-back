@@ -210,9 +210,42 @@ export const deleteMessage = async (req: Request, res: Response) => {
     if (!message.from.equals(user._id as mongoose.Types.ObjectId)) {
         throw new UnauthenticatedError("You can only delete your messages");
     }
+    const conversation = await Conversation.findById(message.conversationId);
     await message.deleteOne();
+    if (conversation.lastMessage.toString() === message._id.toString()) {
+        const newLastMessage = await Message.findOne({
+            conversationId: conversation._id,
+        })
+            .sort({ createdAt: -1 })
+            .exec();
+        if (newLastMessage) {
+            conversation.lastMessage =
+                newLastMessage._id as mongoose.Types.ObjectId;
+        } else {
+            conversation.lastMessage = null;
+        }
+    }
     res.status(StatusCodes.OK).json({
         success: true,
         message: "Message deleted successfully",
+    });
+};
+
+export const getUserConversation = async (req: Request, res: Response) => {
+    const user = req.user;
+    const { userId: otherSideUserId } = req.params;
+    const otherSide = await User.findById(otherSideUserId);
+    if (!otherSide) {
+        throw new BadRequestError("No user with this id");
+    }
+    const conversation = await (
+        await getPrivateConversation(
+            user._id as mongoose.Types.ObjectId,
+            new mongoose.Types.ObjectId(otherSideUserId)
+        )
+    ).populate("participants", "name userProfileImage");
+    res.status(StatusCodes.OK).json({
+        success: true,
+        conversation: conversation.getData(),
     });
 };

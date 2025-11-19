@@ -31,7 +31,6 @@ const authenticateUser = async (
         req.user = user;
         next();
     } catch (error) {
-        console.log("You are not authenticated");
         return next(new UnauthenticatedError("You are not authenticated"));
     }
 };

@@ -4,6 +4,7 @@ import {
     deleteMessage,
     getAllConversations,
     getConversationMessages,
+    getUserConversation,
 } from "../controllers/chat";
 const chatRouter = express.Router();
 
@@ -38,6 +39,42 @@ const chatRouter = express.Router();
  *         description: Internal Server Error
  */
 chatRouter.route("/conversations").get(getAllConversations);
+
+/**
+ * @openapi
+ * /chat/conversations/user/{userId}:
+ *   get:
+ *     tags:
+ *       - Chat
+ *     security:
+ *       - bearerAuth: []
+ *     summary: get user conversation
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: get user conversation
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 conversation:
+ *                   $ref: '#/components/schemas/Conversation'
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Not Found
+ *       500:
+ *         description: Internal Server Error
+ */
+chatRouter.route("/conversations/user/:userId").get(getUserConversation);
 
 /**
  * @openapi

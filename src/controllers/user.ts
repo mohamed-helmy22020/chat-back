@@ -77,7 +77,6 @@ export const blockUser = async (req: Request, res: Response) => {
         throw new BadRequestError("userId is required");
     }
 
-    console.log(userId, user._id.toString());
     if (userId === user._id.toString()) {
         throw new BadRequestError("Can't block yourself");
     }
