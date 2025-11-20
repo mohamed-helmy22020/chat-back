@@ -7,6 +7,7 @@ import {
     NotFoundError,
     UnauthenticatedError,
 } from "../errors";
+import { getIO } from "../middleware/socketMiddleware";
 import FriendRequest from "../models/FriendRequest";
 import User from "../models/User";
 
@@ -70,6 +71,8 @@ export const updateUserData = async (req: Request, res: Response) => {
 };
 
 export const blockUser = async (req: Request, res: Response) => {
+    const io = getIO();
+    const chatNamespace = io.of("/api/chat");
     const user = req.user;
     const { userId } = req.params;
 
@@ -101,7 +104,9 @@ export const blockUser = async (req: Request, res: Response) => {
     }
     user.blockList.push(new mongoose.Types.ObjectId(userId));
     await user.save();
-
+    chatNamespace.to(`user:${userId}`).emit("friendDeleted", {
+        userId: user._id,
+    });
     res.status(StatusCodes.OK).json({ success: true });
 };
 
@@ -123,10 +128,10 @@ export const unblockUser = async (req: Request, res: Response) => {
 };
 
 export const addFriend = async (req: Request, res: Response) => {
-    console.log("=======================debugging=======================");
+    const io = getIO();
+    const chatNamespace = io.of("/api/chat");
     const user = req.user;
     const { userId } = req.params;
-    console.log({ userId });
     if (!userId || !isValidObjectId(userId)) {
         throw new BadRequestError("userId is required");
     }
@@ -155,6 +160,9 @@ export const addFriend = async (req: Request, res: Response) => {
             from: user._id,
             to: new mongoose.Types.ObjectId(userId),
         });
+        chatNamespace.to(`user:${userId}`).emit("newFriendRequest", {
+            user: user.getData("findUser"),
+        });
         res.status(StatusCodes.OK).json({ success: true });
         return;
     }
@@ -173,11 +181,15 @@ export const addFriend = async (req: Request, res: Response) => {
         friendRequest.status = "pending";
         await friendRequest.save();
     }
-    console.log("=======================debugging=======================");
+    chatNamespace.to(`user:${userId}`).emit("newFriendRequest", {
+        user: user.getData("findUser"),
+    });
     res.status(StatusCodes.OK).json({ success: true });
 };
 
 export const deleteFriend = async (req: Request, res: Response) => {
+    const io = getIO();
+    const chatNamespace = io.of("/api/chat");
     const user = req.user;
     const { userId } = req.params;
 
@@ -193,6 +205,9 @@ export const deleteFriend = async (req: Request, res: Response) => {
     }
     friendRequest.status = "rejected";
     await friendRequest.save();
+    chatNamespace.to(`user:${userId}`).emit("friendDeleted", {
+        userId: user._id,
+    });
     res.status(StatusCodes.OK).json({ success: true });
 };
 
@@ -229,9 +244,10 @@ export const getFriendRequests = async (req: Request, res: Response) => {
 };
 
 export const acceptFriendRequest = async (req: Request, res: Response) => {
+    const io = getIO();
+    const chatNamespace = io.of("/api/chat");
     const user = req.user;
     const { userId } = req.params;
-    console.log({ userId });
     if (!userId || !isValidObjectId(userId)) {
         throw new BadRequestError("userId is required");
     }
@@ -240,18 +256,21 @@ export const acceptFriendRequest = async (req: Request, res: Response) => {
         to: user._id,
         status: "pending",
     });
-    console.log({ friendRequest });
 
     if (!friendRequest) {
         throw new NotFoundError("Friend request not found");
     }
     friendRequest.status = "accepted";
     await friendRequest.save();
-
+    chatNamespace.to(`user:${userId}`).emit("friendAccepted", {
+        userId: user._id,
+    });
     res.status(StatusCodes.OK).json({ success: true });
 };
 
 export const cancelFriendRequest = async (req: Request, res: Response) => {
+    const io = getIO();
+    const chatNamespace = io.of("/api/chat");
     const user = req.user;
     const { userId } = req.params;
     if (!userId || !isValidObjectId(userId)) {
@@ -270,7 +289,9 @@ export const cancelFriendRequest = async (req: Request, res: Response) => {
     }
     friendRequest.status = "rejected";
     await friendRequest.save();
-
+    chatNamespace.to(`user:${userId}`).emit("friendRequestCancelled", {
+        userId: user._id,
+    });
     res.status(StatusCodes.OK).json({ success: true });
 };
 

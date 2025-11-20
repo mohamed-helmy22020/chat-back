@@ -36,8 +36,8 @@ export const sendMessage = async (
     text: string
 ) => {
     const io = getIO();
-    const user = (socket.request as Request).user;
     const chatNamespace = io.of("/api/chat");
+    const user = (socket.request as Request).user;
     const otherSide = await User.findById(to);
     if (!otherSide) {
         throw new BadRequestError("No user with this id");
@@ -83,8 +83,8 @@ export const sendTyping = async (
     isTyping: boolean
 ) => {
     const io = getIO();
-    const user = (socket.request as Request).user;
     const chatNamespace = io.of("/api/chat");
+    const user = (socket.request as Request).user;
     const otherSide = await User.findById(to);
     if (!otherSide) {
         throw new BadRequestError("No user with this id");
