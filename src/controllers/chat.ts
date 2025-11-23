@@ -37,10 +37,19 @@ export const sendMessage = async (
 ) => {
     const io = getIO();
     const chatNamespace = io.of("/api/chat");
-    const user = (socket.request as Request).user;
+    const user = await User.findById(
+        (socket.request as Request).user._id.toString()
+    );
     const otherSide = await User.findById(to);
     if (!otherSide) {
         throw new BadRequestError("No user with this id");
+    }
+
+    if (
+        otherSide.blockList.includes(user._id as mongoose.Types.ObjectId) ||
+        user.blockList.includes(otherSide._id as mongoose.Types.ObjectId)
+    ) {
+        throw new BadRequestError("Can't send message to this user");
     }
     const conversation = await getPrivateConversation(
         user._id as mongoose.Types.ObjectId,

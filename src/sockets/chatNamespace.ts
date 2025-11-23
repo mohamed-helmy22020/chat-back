@@ -21,6 +21,7 @@ const registerChatNamespace = (io: Server) => {
             try {
                 await sendMessage(socket, to, text);
             } catch (error) {
+                console.log({ error });
                 chatNamespace
                     .to(`user:${user._id.toString()}`)
                     .emit("errors", error.message);
