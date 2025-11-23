@@ -1,6 +1,7 @@
 import express from "express";
 import {
     addMessageReaction,
+    deleteConversation,
     deleteMessage,
     getAllConversations,
     getConversationMessages,
@@ -112,7 +113,11 @@ chatRouter.route("/conversations/user/:userId").get(getUserConversation);
  *       500:
  *         description: Internal Server Error
  */
-chatRouter.route("/conversations/:userId").get(getConversationMessages);
+chatRouter
+    .route("/conversations/messages/:userId")
+    .get(getConversationMessages);
+
+chatRouter.route("/conversations/:conversationId").delete(deleteConversation);
 
 /**
  * @openapi
@@ -194,4 +199,5 @@ chatRouter.route("/message/:messageId/react").post(addMessageReaction);
  *         description: Internal Server Error
  */
 chatRouter.route("/message/:messageId").delete(deleteMessage);
+
 export default chatRouter;

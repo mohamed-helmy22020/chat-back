@@ -4,9 +4,19 @@ import { MessageType } from "./Message";
 export interface ConversationType extends mongoose.Document {
     participants: mongoose.Types.ObjectId[];
     lastMessage: mongoose.Types.ObjectId | MessageType;
+    userSettings: Map<string, { messages_cleared_at: Date | null }>;
     getData: () => any;
 }
 
+const UserSettingsSchema = new mongoose.Schema(
+    {
+        messages_cleared_at: {
+            type: Date,
+            default: null,
+        },
+    },
+    { _id: false }
+);
 const conversationSchema = new mongoose.Schema(
     {
         participants: [
@@ -19,6 +29,11 @@ const conversationSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "Message",
             default: null,
+        },
+        userSettings: {
+            type: Map,
+            of: UserSettingsSchema,
+            default: {},
         },
     },
     {

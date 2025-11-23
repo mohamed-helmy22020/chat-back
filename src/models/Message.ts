@@ -9,6 +9,8 @@ export interface MessageType extends mongoose.Document {
     seen: boolean;
     reacts: ReactType[];
     getData: () => any;
+    createdAt: Date;
+    updatedAt: Date;
 }
 
 const messageSchema = new mongoose.Schema(

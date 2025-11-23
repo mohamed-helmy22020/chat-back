@@ -145,7 +145,6 @@ userSchema.methods.getData = function (type: string = "all") {
         isEmailVerified: this.isEmailVerified,
         isPhoneVerified: this.isPhoneVerified,
         userProfileImage: this.userProfileImage,
-        stripeCustomerId: this.stripeCustomerId,
         bio: this.bio,
     };
 };

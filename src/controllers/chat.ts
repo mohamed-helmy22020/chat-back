@@ -98,6 +98,12 @@ export const sendTyping = async (
     if (!otherSide) {
         throw new BadRequestError("No user with this id");
     }
+    if (
+        otherSide.blockList.includes(user._id as mongoose.Types.ObjectId) ||
+        user.blockList.includes(otherSide._id as mongoose.Types.ObjectId)
+    ) {
+        throw new BadRequestError("Can't send message to this user");
+    }
     const conversation = await getPrivateConversation(
         user._id as mongoose.Types.ObjectId,
         to
@@ -121,7 +127,15 @@ export const getAllConversations = (req: Request, res: Response) => {
         .then((conversations) => {
             res.status(200).json({
                 success: true,
-                conversations: conversations.map((conv) => conv.getData()),
+                conversations: conversations
+                    .filter((convo) => {
+                        const cutoff =
+                            convo?.userSettings?.get(user._id.toString())
+                                ?.messages_cleared_at || new Date(0);
+                        const lastMessage = convo.lastMessage as MessageType;
+                        return lastMessage?.createdAt > cutoff;
+                    })
+                    .map((conv) => conv.getData()),
             });
         });
 };
@@ -158,6 +172,11 @@ export const getConversationMessages = async (req: Request, res: Response) => {
     const conversationMessages = (
         await Message.find({
             conversationId: conversation._id,
+            createdAt: {
+                $gt:
+                    conversation.userSettings.get(user._id.toString())
+                        ?.messages_cleared_at || new Date(0),
+            },
         }).populate("reacts.user", "name userProfileImage")
     ).map((c) => c.getData());
 
@@ -256,5 +275,30 @@ export const getUserConversation = async (req: Request, res: Response) => {
     res.status(StatusCodes.OK).json({
         success: true,
         conversation: conversation.getData(),
+    });
+};
+
+export const deleteConversation = async (req: Request, res: Response) => {
+    const user = req.user;
+    const { conversationId } = req.params;
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation) {
+        throw new BadRequestError("No conversation with this id");
+    }
+    if (
+        !conversation.participants.includes(user._id as mongoose.Types.ObjectId)
+    ) {
+        throw new UnauthenticatedError(
+            "You can only delete your conversations"
+        );
+    }
+
+    conversation.userSettings.set(user._id.toString(), {
+        messages_cleared_at: new Date(),
+    });
+    await conversation.save();
+    res.status(200).json({
+        success: true,
+        msg: "Conversation deleted successfully",
     });
 };
