@@ -9,6 +9,7 @@ import {
     allowedPictureTypes,
     allowedVideoTypes,
 } from "../middleware/checkFiles";
+import { getIO } from "../middleware/socketMiddleware";
 import FriendRequest from "../models/FriendRequest";
 import { Status } from "../models/Status";
 
@@ -54,6 +55,8 @@ export const getFriendsStatuses = async (req: Request, res: Response) => {
 };
 
 export const createStatus = async (req: Request, res: Response) => {
+    const io = getIO();
+    const chatNamespace = io.of("/api/chat");
     const user = req.user;
     const content = req.body?.content;
     const { file: statusMedia } = req;
@@ -98,9 +101,26 @@ export const createStatus = async (req: Request, res: Response) => {
         }
     }
 
-    const status = new Status(statusData);
+    const status = await (
+        await Status.create(statusData)
+    ).populate("userId", "_id name userProfileImage");
 
-    await status.save();
+    const friendsChannels = (
+        await FriendRequest.find({
+            $or: [{ from: user._id }, { to: user._id }],
+            status: "accepted",
+        }).select("from to")
+    ).map((friend) => {
+        if (friend.from.toString() === user._id.toString()) {
+            return `user:${friend.to.toString()}`;
+        }
+        return `user:${friend.from.toString()}`;
+    });
+
+    console.log(friendsChannels);
+    chatNamespace.to(friendsChannels).emit("newFriendStatus", {
+        status: status.getData("friend"),
+    });
 
     res.status(StatusCodes.CREATED).json({
         success: true,

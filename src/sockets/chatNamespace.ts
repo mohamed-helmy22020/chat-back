@@ -9,7 +9,6 @@ const registerChatNamespace = (io: Server) => {
 
         const req = socket.request as Request;
         const user = req.user;
-        console.log("user", user.id);
 
         if (!user) {
             socket.disconnect();
@@ -21,7 +20,6 @@ const registerChatNamespace = (io: Server) => {
             try {
                 await sendMessage(socket, to, text);
             } catch (error) {
-                console.log({ error });
                 chatNamespace
                     .to(`user:${user._id.toString()}`)
                     .emit("errors", error.message);
