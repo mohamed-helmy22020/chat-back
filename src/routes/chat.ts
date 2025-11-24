@@ -79,7 +79,7 @@ chatRouter.route("/conversations/user/:userId").get(getUserConversation);
 
 /**
  * @openapi
- * /chat/conversations/{userId}:
+ * /chat/conversations/messages/{userId}:
  *   get:
  *     tags:
  *       - Chat

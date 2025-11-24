@@ -19,7 +19,8 @@ export const getUserStatuses = async (req: Request, res: Response) => {
     const statuses = await Status.find({ userId: user._id })
         .active()
         .sort({ createdAt: 1 })
-        .populate("userId", "_id name userProfileImage");
+        .populate("userId", "_id name userProfileImage")
+        .populate("viewers", "_id name userProfileImage");
     res.json({
         success: true,
         statuses: statuses.map((status) => status.getData()),
@@ -117,9 +118,8 @@ export const createStatus = async (req: Request, res: Response) => {
         return `user:${friend.from.toString()}`;
     });
 
-    console.log(friendsChannels);
     chatNamespace.to(friendsChannels).emit("newFriendStatus", {
-        status: status.getData("friend"),
+        status: { ...status.getData("friend"), isSeen: false },
     });
 
     res.status(StatusCodes.CREATED).json({
@@ -129,9 +129,11 @@ export const createStatus = async (req: Request, res: Response) => {
 };
 
 export const seeStatus = async (req: Request, res: Response) => {
+    const io = getIO();
+    const chatNamespace = io.of("/api/chat");
     const user = req.user;
     const { statusId } = req.params;
-    const status = await Status.findOne({ _id: statusId });
+    const status = await Status.findOne({ _id: statusId }).active();
     if (!status) {
         res.status(StatusCodes.NOT_FOUND).json({ message: "Status not found" });
         return;
@@ -146,6 +148,14 @@ export const seeStatus = async (req: Request, res: Response) => {
         status.viewers.push(user._id);
         await status.save();
     }
+    chatNamespace.to(`user:${status.userId.toString()}`).emit("statusSeen", {
+        statusId: status._id,
+        user: {
+            _id: user._id,
+            name: user.name,
+            userProfileImage: user.userProfileImage,
+        },
+    });
     res.status(StatusCodes.OK).json({
         ...status.getData("friend"),
         isSeen: status.viewers.includes(user._id),
@@ -153,6 +163,9 @@ export const seeStatus = async (req: Request, res: Response) => {
 };
 
 export const deleteStatus = async (req: Request, res: Response) => {
+    const io = getIO();
+    const chatNamespace = io.of("/api/chat");
+
     const user = req.user;
     const { statusId } = req.params;
 
@@ -168,6 +181,20 @@ export const deleteStatus = async (req: Request, res: Response) => {
     }
     status.isDeleted = true;
     await status.save();
+    const friendsChannels = (
+        await FriendRequest.find({
+            $or: [{ from: user._id }, { to: user._id }],
+            status: "accepted",
+        }).select("from to")
+    ).map((friend) => {
+        if (friend.from.toString() === user._id.toString()) {
+            return `user:${friend.to.toString()}`;
+        }
+        return `user:${friend.from.toString()}`;
+    });
+    chatNamespace.to(friendsChannels).emit("deleteFriendStatus", {
+        statusId,
+    });
 
     res.status(StatusCodes.OK).json({
         success: "true",
