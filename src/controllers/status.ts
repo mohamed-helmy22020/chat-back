@@ -20,7 +20,7 @@ export const getUserStatuses = async (req: Request, res: Response) => {
         .active()
         .sort({ createdAt: 1 })
         .populate("userId", "_id name userProfileImage")
-        .populate("viewers", "_id name userProfileImage");
+        .populate("viewers.user", "_id name userProfileImage");
     res.json({
         success: true,
         statuses: statuses.map((status) => status.getData()),
@@ -50,7 +50,8 @@ export const getFriendsStatuses = async (req: Request, res: Response) => {
         success: true,
         statuses: statuses.map((status) => ({
             ...status.getData("friend"),
-            isSeen: status.viewers.includes(user._id),
+            isSeen:
+                status.viewers.findIndex((s) => s.user.equals(user._id)) > -1,
         })),
     });
 };
@@ -144,8 +145,8 @@ export const seeStatus = async (req: Request, res: Response) => {
         });
         return;
     }
-    if (!status.viewers.includes(user._id)) {
-        status.viewers.push(user._id);
+    if (!status.viewers.find((s) => s.user.equals(user._id))) {
+        status.viewers.push({ user: user._id });
         await status.save();
     }
     chatNamespace.to(`user:${status.userId.toString()}`).emit("statusSeen", {
@@ -158,7 +159,7 @@ export const seeStatus = async (req: Request, res: Response) => {
     });
     res.status(StatusCodes.OK).json({
         ...status.getData("friend"),
-        isSeen: status.viewers.includes(user._id),
+        isSeen: status.viewers.findIndex((s) => s.user.equals(user._id)) > -1,
     });
 };
 
