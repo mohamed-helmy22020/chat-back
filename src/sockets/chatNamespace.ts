@@ -16,9 +16,9 @@ const registerChatNamespace = (io: Server) => {
 
         socket.join(`user:${user._id.toString()}`);
 
-        socket.on("sendPrivateMessage", async (to, text) => {
+        socket.on("sendPrivateMessage", async (to, text, ack) => {
             try {
-                await sendMessage(socket, to, text);
+                await sendMessage(socket, to, text, ack);
             } catch (error) {
                 chatNamespace
                     .to(`user:${user._id.toString()}`)

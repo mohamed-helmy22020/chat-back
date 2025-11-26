@@ -33,7 +33,8 @@ const getPrivateConversation = async (
 export const sendMessage = async (
     socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
     to: mongoose.Types.ObjectId,
-    text: string
+    text: string,
+    ack?: (response: any) => void
 ) => {
     const io = getIO();
     const chatNamespace = io.of("/api/chat");
@@ -70,6 +71,17 @@ export const sendMessage = async (
         await conversation.save()
     ).populate("participants", "name userProfileImage");
 
+    if (ack) {
+        ack({
+            success: true,
+            message: message.getData(),
+            conversation: {
+                ...conversation.getData(),
+                lastMessage: message.getData(),
+            },
+        });
+    }
+
     chatNamespace
         .to(`user:${to}`)
         .to(`user:${user._id.toString()}`)
@@ -81,6 +93,7 @@ export const sendMessage = async (
                 lastMessage: message.getData(),
             },
         });
+
     chatNamespace.to(`user:${to}`).emit("typing", {
         conversationId: conversation._id,
         isTyping: false,
@@ -143,46 +156,66 @@ export const getAllConversations = (req: Request, res: Response) => {
 export const getConversationMessages = async (req: Request, res: Response) => {
     const user = req.user;
     const { userId: otherSideUserId } = req.params;
+    const { before } = req.query; // ISO string of createdAt
+
+    const LIMIT = Math.min(parseInt(req.query.limit as string, 10) || 20, 50);
+
     const otherSide = await User.findById(otherSideUserId);
     if (!otherSide) {
         throw new BadRequestError("No user with this id");
     }
+
     const conversation = await getPrivateConversation(
         user._id as mongoose.Types.ObjectId,
         new mongoose.Types.ObjectId(otherSideUserId)
     );
-    const conversationLastMessage =
-        conversation.lastMessage as unknown as MessageType;
 
     if (
         !conversation.participants.includes(user._id as mongoose.Types.ObjectId)
     ) {
         throw new UnauthenticatedError(
-            "You can only get your conversations messages"
+            "You can only get your conversation messages"
         );
     }
+
+    const conversationLastMessage =
+        conversation.lastMessage as unknown as MessageType;
     if (
         conversationLastMessage &&
-        !conversationLastMessage?.seen &&
-        conversationLastMessage?.from.toString() !== user._id.toString()
+        !conversationLastMessage.seen &&
+        conversationLastMessage.from.toString() !== user._id.toString()
     ) {
         conversationLastMessage.seen = true;
         await conversationLastMessage.save();
     }
-    const conversationMessages = (
-        await Message.find({
-            conversationId: conversation._id,
-            createdAt: {
-                $gt:
-                    conversation.userSettings.get(user._id.toString())
-                        ?.messages_cleared_at || new Date(0),
-            },
-        }).populate("reacts.user", "name userProfileImage")
-    ).map((c) => c.getData());
+
+    const clearedAt =
+        conversation.userSettings.get(user._id.toString())
+            ?.messages_cleared_at || new Date(0);
+
+    const query: any = {
+        conversationId: conversation._id,
+        createdAt: { $gt: clearedAt },
+    };
+
+    if (before) {
+        const beforeDate = new Date(before as string);
+        if (isNaN(beforeDate.getTime())) {
+            throw new BadRequestError("Invalid 'before' timestamp");
+        }
+        query.createdAt.$lt = beforeDate;
+    }
+
+    const messages = await Message.find(query)
+        .sort({ createdAt: -1 })
+        .limit(LIMIT)
+        .populate("reacts.user", "name userProfileImage")
+        .then((docs) => docs.map((doc) => doc.getData()));
 
     res.status(StatusCodes.OK).json({
         success: true,
-        messages: conversationMessages,
+        messages,
+        hasMore: messages.length === LIMIT,
     });
 };
 
