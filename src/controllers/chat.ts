@@ -2,7 +2,15 @@ import { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 import mongoose from "mongoose";
 import { DefaultEventsMap, Socket } from "socket.io";
+import {
+    handleUploadPicFromBuffer,
+    handleUploadVideoFromBuffer,
+} from "../config/cloudinary";
 import { BadRequestError, UnauthenticatedError } from "../errors";
+import {
+    allowedPictureTypes,
+    allowedVideoTypes,
+} from "../middleware/checkFiles";
 import { getIO } from "../middleware/socketMiddleware";
 import Conversation, { ConversationType } from "../models/Conversation";
 import Message, { MessageType } from "../models/Message";
@@ -34,6 +42,10 @@ export const sendMessage = async (
     socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
     to: mongoose.Types.ObjectId,
     text: string,
+    media?: {
+        buffer: Buffer;
+        mimetype: string;
+    },
     ack?: (response: any) => void
 ) => {
     const io = getIO();
@@ -56,12 +68,43 @@ export const sendMessage = async (
         user._id as mongoose.Types.ObjectId,
         to
     );
+    const _id = new mongoose.Types.ObjectId();
     const messageData = {
+        _id,
         conversationId: conversation._id,
         from: user._id,
         to,
         text,
+        mediaUrl: "",
+        mediaType: "",
     };
+
+    if (media) {
+        try {
+            if (allowedPictureTypes.includes(media.mimetype)) {
+                const cldRes = await handleUploadPicFromBuffer(media, {
+                    public_id: `message_${user._id}_${_id}`,
+                    folder: "message",
+                });
+                messageData.mediaUrl = cldRes.secure_url;
+                messageData.mediaType = "image";
+            } else if (allowedVideoTypes.includes(media.mimetype)) {
+                const cldRes = await handleUploadVideoFromBuffer(media, {
+                    public_id: `message_${user._id}_${_id}`,
+                    folder: "message",
+                });
+                if ("http_code" in cldRes) {
+                    throw new Error("Error uploading media");
+                }
+                messageData.mediaUrl = cldRes.secure_url;
+                messageData.mediaType = "video";
+            }
+        } catch (error) {
+            console.log({ error });
+            throw new Error("Error uploading media");
+        }
+    }
+
     const message = await Message.create(messageData);
 
     conversation.lastMessage = new mongoose.Types.ObjectId(

@@ -6,6 +6,8 @@ export interface MessageType extends mongoose.Document {
     from: mongoose.Types.ObjectId;
     to: mongoose.Types.ObjectId;
     text: string;
+    mediaUrl: string;
+    mediaType: "image" | "video" | "";
     seen: boolean;
     reacts: ReactType[];
     getData: () => any;
@@ -32,7 +34,18 @@ const messageSchema = new mongoose.Schema(
         },
         text: {
             type: String,
-            required: [true, "Please provide message"],
+            required: false,
+        },
+        mediaUrl: {
+            type: String,
+            required: false,
+            default: "",
+        },
+        mediaType: {
+            type: String,
+            enum: ["image", "video", ""],
+            required: false,
+            default: "",
         },
         seen: {
             type: Boolean,
@@ -120,6 +133,8 @@ messageSchema.methods.getData = function () {
         from: this.from,
         to: this.to,
         text: this.text,
+        mediaUrl: this.mediaUrl,
+        mediaType: this.mediaType,
         seen: this.seen,
         reacts: this.reacts,
         createdAt: this.createdAt,

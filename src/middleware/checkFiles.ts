@@ -13,25 +13,37 @@ export const allowedVideoTypes = [
 const MAX_PHOTO_SIZE = 5 * 1024 * 1024; // 5 MB
 const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100 MB
 
+export const checkSocketPics = (media: {
+    buffer: Buffer;
+    mimetype: string;
+}) => {
+    if (
+        !allowedPictureTypes.includes(media.mimetype) &&
+        !allowedVideoTypes.includes(media.mimetype)
+    ) {
+        throw new BadRequestError(
+            "Invalid file type. Only images are allowed."
+        );
+    }
+    const isPicture = allowedPictureTypes.includes(media.mimetype);
+    const isVideo = allowedVideoTypes.includes(media.mimetype);
+    if (
+        (media && isPicture && media.buffer.length > MAX_PHOTO_SIZE) ||
+        (media && isVideo && media.buffer.length > MAX_VIDEO_SIZE)
+    ) {
+        throw new BadRequestError(
+            "File size exceeds the maximum allowed size."
+        );
+    }
+    return true;
+};
+
 export const checkPicture = {
     fileFilter: (
         req: Request,
         file: Express.Multer.File,
         cb: (error: Error | null, acceptFile: boolean) => void
     ) => {
-        if (file.fieldname === "courseOverview") {
-            if (!allowedVideoTypes.includes(file.mimetype)) {
-                return cb(new Error("Only video files are allowed"), false);
-            }
-            if (file.size > MAX_VIDEO_SIZE) {
-                return cb(
-                    new Error("Video size must be less than 100MB"),
-                    false
-                );
-            }
-            return cb(null, true);
-        }
-
         if (!allowedPictureTypes.includes(file.mimetype)) {
             return cb(
                 new BadRequestError(

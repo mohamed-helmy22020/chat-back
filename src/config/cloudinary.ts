@@ -1,4 +1,8 @@
-import { v2 as cloudinary, UploadApiResponse } from "cloudinary";
+import {
+    v2 as cloudinary,
+    UploadApiErrorResponse,
+    UploadApiResponse,
+} from "cloudinary";
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
@@ -37,8 +41,8 @@ export const handleUploadPicFromBuffer = async (
 export const handleUploadVideoFromBuffer = async (
     video: any,
     options: cloudinaryOptions
-): Promise<UploadApiResponse> => {
-    return await new Promise((resolve) => {
+): Promise<UploadApiResponse | UploadApiErrorResponse> => {
+    return await new Promise((resolve, reject) => {
         cloudinary.uploader
             .upload_stream(
                 {
@@ -50,10 +54,11 @@ export const handleUploadVideoFromBuffer = async (
                             duration: 60,
                         },
                     ],
+                    timeout: 60000,
                 },
                 (error, uploadResult) => {
                     if (error) {
-                        throw new Error(error as unknown as string);
+                        return reject(error);
                     }
                     return resolve(uploadResult);
                 }

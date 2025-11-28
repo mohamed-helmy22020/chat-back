@@ -22,6 +22,7 @@ const io = new Server(httpServer, {
     cors: {
         origin: "http://localhost:3000",
     },
+    maxHttpBufferSize: 1e8,
 });
 
 setSocketIO(io);
