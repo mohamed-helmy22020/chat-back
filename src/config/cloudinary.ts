@@ -23,7 +23,7 @@ export const handleUpload = async (
         resource_type: "auto",
         public_id,
         overwrite: true,
-        folder: folder || "",
+        folder: `chat-app/${folder}` || `chat-app/`,
     });
     return res;
 };
@@ -48,7 +48,7 @@ export const handleUploadVideoFromBuffer = async (
                 {
                     resource_type: "video",
                     public_id: options.public_id,
-                    folder: options.folder,
+                    folder: `chat-app/${options.folder}`,
                     transformation: [
                         {
                             duration: 60,
