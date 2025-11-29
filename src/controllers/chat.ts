@@ -27,12 +27,20 @@ const getPrivateConversation = async (
             $size: 2,
             $all: [id1, id2],
         },
-    }).populate("lastMessage", "from to text seen");
+    }).populate(
+        "lastMessage",
+        "from to text seen mediaType mediaUrl createdAt updatedAt"
+    );
 
     if (!conversation) {
         conversation = await Conversation.create({
             participants: [id1, id2],
-        }).then((conv) => conv.populate("lastMessage", "from to text seen"));
+        }).then((conv) =>
+            conv.populate(
+                "lastMessage",
+                "from to text seen mediaType mediaUrl createdAt updatedAt"
+            )
+        );
     }
 
     return conversation as unknown as ConversationType;
@@ -147,8 +155,6 @@ export const sendTyping = async (
     to: mongoose.Types.ObjectId,
     isTyping: boolean
 ) => {
-    const io = getIO();
-    const chatNamespace = io.of("/api/chat");
     const user = (socket.request as Request).user;
     const otherSide = await User.findById(to);
     if (!otherSide) {
@@ -164,7 +170,7 @@ export const sendTyping = async (
         user._id as mongoose.Types.ObjectId,
         to
     );
-    chatNamespace.to(`user:${to}`).emit("typing", {
+    socket.to(`user:${to}`).emit("typing", {
         conversationId: conversation._id,
         isTyping,
     });
@@ -177,7 +183,10 @@ export const getAllConversations = (req: Request, res: Response) => {
             $in: [user._id],
         },
     })
-        .populate("lastMessage", "from to text seen createdAt updatedAt")
+        .populate(
+            "lastMessage",
+            "from to text seen mediaType mediaUrl createdAt updatedAt"
+        )
         .populate("participants", "name userProfileImage")
         .sort("-updatedAt")
         .then((conversations) => {
@@ -377,4 +386,30 @@ export const deleteConversation = async (req: Request, res: Response) => {
         success: true,
         msg: "Conversation deleted successfully",
     });
+};
+
+export const seeMessages = async (
+    socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
+    to: mongoose.Types.ObjectId,
+    ack: (response: any) => void
+) => {
+    const user = (socket.request as Request).user;
+    const conversation = await getPrivateConversation(
+        user._id as mongoose.Types.ObjectId,
+        to
+    );
+    await Message.updateMany(
+        {
+            conversationId: conversation._id,
+            to: user._id as mongoose.Types.ObjectId,
+            seen: false,
+        },
+        {
+            seen: true,
+        }
+    );
+    socket.to(`user:${to}`).emit("messagesSeen");
+    if (ack) {
+        ack({ success: true });
+    }
 };

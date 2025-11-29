@@ -1,6 +1,6 @@
 import { type Request } from "express";
 import { Server } from "socket.io";
-import { sendMessage, sendTyping } from "../controllers/chat";
+import { seeMessages, sendMessage, sendTyping } from "../controllers/chat";
 import { checkSocketPics } from "../middleware/checkFiles";
 
 const registerChatNamespace = (io: Server) => {
@@ -37,6 +37,16 @@ const registerChatNamespace = (io: Server) => {
         socket.on("typing", async (to, isTyping) => {
             try {
                 await sendTyping(socket, to, isTyping);
+            } catch (error) {
+                chatNamespace
+                    .to(`user:${user._id.toString()}`)
+                    .emit("errors", error.message);
+            }
+        });
+
+        socket.on("seeAllMessages", async (to, ack) => {
+            try {
+                await seeMessages(socket, to, ack);
             } catch (error) {
                 chatNamespace
                     .to(`user:${user._id.toString()}`)
