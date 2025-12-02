@@ -1,7 +1,10 @@
 import { type Request } from "express";
 import { Server } from "socket.io";
 import { seeMessages, sendMessage, sendTyping } from "../controllers/chat";
+import { emitUserIsOnline } from "../controllers/user";
 import { checkSocketPics } from "../middleware/checkFiles";
+
+export const onlineUsers = new Map<string, boolean>();
 
 const registerChatNamespace = (io: Server) => {
     const chatNamespace = io.of("/api/chat");
@@ -16,6 +19,12 @@ const registerChatNamespace = (io: Server) => {
         }
 
         socket.join(`user:${user._id.toString()}`);
+        onlineUsers.set(user._id.toString(), true);
+        try {
+            emitUserIsOnline(socket, true);
+        } catch (error) {
+            console.log(error);
+        }
 
         socket.on("sendPrivateMessage", async (to, text, media, ack) => {
             try {
@@ -55,6 +64,12 @@ const registerChatNamespace = (io: Server) => {
         });
 
         socket.on("disconnect", () => {
+            onlineUsers.set(user._id.toString(), false);
+            try {
+                emitUserIsOnline(socket, false);
+            } catch (error) {
+                console.log(error);
+            }
             console.log("A user disconnected from chat namespace");
         });
     });

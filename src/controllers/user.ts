@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 import mongoose, { isValidObjectId } from "mongoose";
+import { DefaultEventsMap, Socket } from "socket.io";
 import { handleUploadPicFromBuffer } from "../config/cloudinary";
 import {
     BadRequestError,
@@ -10,6 +11,7 @@ import {
 import { getIO } from "../middleware/socketMiddleware";
 import FriendRequest from "../models/FriendRequest";
 import User from "../models/User";
+import { onlineUsers } from "../sockets/chatNamespace";
 
 export const getUserData = async (req: Request, res: Response) => {
     const user = req.user;
@@ -218,13 +220,20 @@ export const getFriendsList = async (req: Request, res: Response) => {
         status: "accepted",
     })
         .populate("from", "name userProfileImage")
-        .populate("to", "name userProfileImage");
+        .populate("to", "name userProfileImage")
+        .lean();
 
     const friends = fetchedFriends.map((friend) => {
         if (friend.from._id.toString() === user._id.toString()) {
-            return friend.to;
+            return {
+                ...friend.to,
+                isOnline: !!onlineUsers.get(friend.to._id.toString()),
+            };
         }
-        return friend.from;
+        return {
+            ...friend.from,
+            isOnline: !!onlineUsers.get(friend.from._id.toString()),
+        };
     });
 
     res.status(StatusCodes.OK).json({ success: true, friends: friends });
@@ -367,5 +376,27 @@ export const findUser = async (req: Request, res: Response) => {
                 isFriend.from.toString() !== user._id.toString() &&
                 isFriend.status === "pending",
         },
+    });
+};
+
+export const emitUserIsOnline = async (
+    socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
+    isOnline: boolean
+) => {
+    const user = (socket.request as Request).user;
+    const friends = (
+        await FriendRequest.find({
+            $or: [{ from: user._id }, { to: user._id }],
+            status: "accepted",
+        })
+    ).map((friend) => {
+        if (friend.from.toString() === user._id.toString()) {
+            return `user:${friend.to.toString()}`;
+        }
+        return `user:${friend.from.toString()}`;
+    });
+    socket.to(friends).emit("friendIsOnline", {
+        userId: user._id.toString(),
+        isOnline,
     });
 };
