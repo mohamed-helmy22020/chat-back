@@ -103,13 +103,18 @@ export const blockUser = async (req: Request, res: Response) => {
     ) {
         isFriend.status = "rejected";
         await isFriend.save();
+        chatNamespace.to(`user:${userId}`).emit("friendDeleted", {
+            userId: user._id,
+        });
     }
     user.blockList.push(new mongoose.Types.ObjectId(userId));
     await user.save();
-    chatNamespace.to(`user:${userId}`).emit("friendDeleted", {
-        userId: user._id,
+    const otherUser = await User.findById(userId);
+
+    res.status(StatusCodes.OK).json({
+        success: true,
+        blockedUser: otherUser.getData("userRequest"),
     });
-    res.status(StatusCodes.OK).json({ success: true });
 };
 
 export const unblockUser = async (req: Request, res: Response) => {
@@ -186,7 +191,10 @@ export const addFriend = async (req: Request, res: Response) => {
     chatNamespace.to(`user:${userId}`).emit("newFriendRequest", {
         user: user.getData("findUser"),
     });
-    res.status(StatusCodes.OK).json({ success: true });
+    res.status(StatusCodes.OK).json({
+        success: true,
+        user: otherUser.getData("findUser"),
+    });
 };
 
 export const deleteFriend = async (req: Request, res: Response) => {
