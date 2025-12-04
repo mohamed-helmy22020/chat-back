@@ -47,9 +47,7 @@ const registerChatNamespace = (io: Server) => {
             try {
                 await sendTyping(socket, to, isTyping);
             } catch (error) {
-                chatNamespace
-                    .to(`user:${user._id.toString()}`)
-                    .emit("errors", error.message);
+                console.log(error);
             }
         });
 
