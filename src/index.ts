@@ -2,8 +2,10 @@ import cors from "cors";
 import "dotenv/config";
 import express from "express";
 import rateLimiter from "express-rate-limit";
+import fs from "fs";
 import helmet from "helmet";
 import http from "http";
+import https from "https";
 import { Server } from "socket.io";
 import connectDB from "./db/connect";
 import authenticateUser from "./middleware/authentication";
@@ -16,11 +18,34 @@ import statusRouter from "./routes/status";
 import userRouter from "./routes/user";
 import registerSocketNamespaces from "./sockets";
 import swaggerDocs from "./utils/swagger";
+
 const app = express();
-const httpServer = http.createServer(app);
+const keyPath = "./src/public/cert-key.pem";
+const certPath = "./src/public/cert.pem";
+
+let httpServer;
+
+// Helper to check if file exists and is readable
+function fileExists(path: string) {
+    try {
+        fs.accessSync(path, fs.constants.R_OK);
+        return true;
+    } catch {
+        return false;
+    }
+}
+if (fileExists(keyPath) && fileExists(certPath)) {
+    const options = {
+        key: fs.readFileSync(keyPath),
+        cert: fs.readFileSync(certPath),
+    };
+    httpServer = https.createServer(options, app);
+} else {
+    httpServer = http.createServer(app);
+}
 const io = new Server(httpServer, {
     cors: {
-        origin: ["http://localhost:3000", "http://192.168.1.9:3000"],
+        origin: ["https://localhost:3000"],
     },
     maxHttpBufferSize: 1e8,
 });
