@@ -45,7 +45,7 @@ if (fileExists(keyPath) && fileExists(certPath)) {
 }
 const io = new Server(httpServer, {
     cors: {
-        origin: ["https://localhost:3000"],
+        origin: "*",
     },
     maxHttpBufferSize: 1e8,
 });
@@ -62,7 +62,11 @@ app.use(
     })
 );
 app.use(helmet());
-app.use(cors({ origin: "http://localhost:3000" }));
+app.use(
+    cors({
+        origin: "*",
+    })
+);
 
 app.get("/", (req, res) => {
     res.send("Chat app Api");

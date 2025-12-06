@@ -1,5 +1,6 @@
 import { type Request } from "express";
 import { Server } from "socket.io";
+import { call, sendSignalData } from "../controllers/call";
 import { seeMessages, sendMessage, sendTyping } from "../controllers/chat";
 import { emitUserIsOnline } from "../controllers/user";
 import { checkSocketPics } from "../middleware/checkFiles";
@@ -58,6 +59,45 @@ const registerChatNamespace = (io: Server) => {
                 chatNamespace
                     .to(`user:${user._id.toString()}`)
                     .emit("errors", error.message);
+            }
+        });
+
+        socket.on("call", async (to, callType, ack) => {
+            try {
+                if (callType !== "voice" && callType !== "video") {
+                    throw new Error("Invalid call type");
+                }
+                if (onlineUsers.get(to.toString()) === false) {
+                    throw new Error("User is not online");
+                }
+                await call(socket, to, callType, ack);
+            } catch (error) {
+                chatNamespace
+                    .to(`user:${user._id.toString()}`)
+                    .emit("errors", error.message);
+            }
+        });
+
+        socket.on("acceptCall", async (to, callId, ack) => {
+            try {
+                socket.to(`user:${to}`).emit("callAccepted", callId);
+            } catch (error) {
+                console.log(error);
+            }
+        });
+
+        socket.on("endCall", async (to, callId) => {
+            try {
+                socket.to(`user:${to}`).emit("callEnded", callId);
+            } catch (error) {
+                console.log(error);
+            }
+        });
+        socket.on("signal", async ({ to, callId, data }) => {
+            try {
+                await sendSignalData(socket, to, callId, data);
+            } catch (error) {
+                console.log(error);
             }
         });
 
