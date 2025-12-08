@@ -3,6 +3,7 @@ import { NextFunction } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import mongoose, { Document } from "mongoose";
+import { UserSettingsType } from "types";
 
 export interface IUser extends mongoose.Document {
     _id: mongoose.Types.ObjectId;
@@ -18,6 +19,7 @@ export interface IUser extends mongoose.Document {
     userProfileImage: string;
     blockList: mongoose.Types.ObjectId[];
     bio: string;
+    settings: UserSettingsType;
     createAccessToken: () => string;
     encryptPassword: (password: string) => Promise<string>;
     comparePassword: (candidatePassword: string) => Promise<boolean>;
@@ -73,6 +75,15 @@ const userSchema = new mongoose.Schema<IUser>(
         bio: {
             type: String,
             default: "",
+        },
+        settings: {
+            type: Object,
+            default: {
+                privacy: {
+                    online: "Friends",
+                    readReceipts: "Enable",
+                },
+            },
         },
     },
     {
@@ -146,6 +157,7 @@ userSchema.methods.getData = function (type: string = "all") {
         isPhoneVerified: this.isPhoneVerified,
         userProfileImage: this.userProfileImage,
         bio: this.bio,
+        settings: this.settings,
     };
 };
 

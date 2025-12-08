@@ -10,7 +10,7 @@ import {
 } from "../errors";
 import { getIO } from "../middleware/socketMiddleware";
 import FriendRequest from "../models/FriendRequest";
-import User from "../models/User";
+import User, { IUser } from "../models/User";
 import { onlineUsers } from "../sockets/chatNamespace";
 
 export const getUserData = async (req: Request, res: Response) => {
@@ -20,15 +20,20 @@ export const getUserData = async (req: Request, res: Response) => {
 
 export const updateUserData = async (req: Request, res: Response) => {
     const user = req.user;
-    const { name, email, newPassword, phone, currentPassword, bio } = req.body;
+    const { name, email, newPassword, phone, currentPassword, bio, settings } =
+        req.body;
     const { file: profilePicture } = req;
 
     const isPasswordCorrect = currentPassword
         ? await user.comparePassword(currentPassword)
         : false;
 
-    const userData: any = {};
+    const userData: Partial<IUser> = {};
 
+    if (settings) {
+        const settingsParsed = JSON.parse(settings);
+        userData.settings = settingsParsed;
+    }
     if (name && name.length <= 25) {
         userData.name = name;
     } else if (name && name.length > 25) {
@@ -227,20 +232,34 @@ export const getFriendsList = async (req: Request, res: Response) => {
         $or: [{ from: user._id }, { to: user._id }],
         status: "accepted",
     })
-        .populate("from", "name userProfileImage")
-        .populate("to", "name userProfileImage")
-        .lean();
+        .populate("from", "name userProfileImage settings")
+        .populate("to", "name userProfileImage settings");
 
     const friends = fetchedFriends.map((friend) => {
         if (friend.from._id.toString() === user._id.toString()) {
+            const {settings, ...rest} = (friend.to as any)._doc as unknown as Pick<
+                IUser,
+                "name" | "userProfileImage" | "settings"
+            >;
             return {
-                ...friend.to,
-                isOnline: !!onlineUsers.get(friend.to._id.toString()),
+                ...rest,
+                isOnline:
+                    settings.privacy.online === "None"
+                        ? undefined
+                        : !!onlineUsers.get(friend.to._id.toString()),
             };
         }
+        const {settings, ...rest} = (friend.from as any)._doc as unknown as Pick<
+                IUser,
+                "name" | "userProfileImage" | "settings"
+            >;
+
         return {
-            ...friend.from,
-            isOnline: !!onlineUsers.get(friend.from._id.toString()),
+            ...rest,
+            isOnline:
+                settings.privacy.online === "None"
+                    ? undefined
+                    : !!onlineUsers.get(friend.to._id.toString()),
         };
     });
 

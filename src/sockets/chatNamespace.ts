@@ -20,11 +20,14 @@ const registerChatNamespace = (io: Server) => {
         }
 
         socket.join(`user:${user._id.toString()}`);
-        onlineUsers.set(user._id.toString(), true);
-        try {
-            emitUserIsOnline(socket, true);
-        } catch (error) {
-            console.log(error);
+        if (user.settings.privacy.online !== "None") {
+            console.log(user.settings.privacy.online);
+            onlineUsers.set(user._id.toString(), true);
+            try {
+                emitUserIsOnline(socket, true);
+            } catch (error) {
+                console.log(error);
+            }
         }
 
         socket.on("sendPrivateMessage", async (to, text, media, ack) => {
@@ -53,6 +56,7 @@ const registerChatNamespace = (io: Server) => {
         });
 
         socket.on("seeAllMessages", async (to, ack) => {
+            if (user.settings.privacy.readReceipts === "Disable") return;
             try {
                 await seeMessages(socket, to, ack);
             } catch (error) {
