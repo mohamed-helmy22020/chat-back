@@ -272,6 +272,7 @@ export const getConversationMessages = async (req: Request, res: Response) => {
 };
 
 export const addMessageReaction = async (req: Request, res: Response) => {
+    const chatSocket = getIO().of("/api/chat");
     const user = req.user;
     const { messageId } = req.params;
     const { react } = req.body;
@@ -303,6 +304,21 @@ export const addMessageReaction = async (req: Request, res: Response) => {
             user: user._id as mongoose.Types.ObjectId,
         });
     }
+    const otherSideId =
+        message.from.toString() !== user._id.toString()
+            ? message.from.toString()
+            : message.to.toString();
+    chatSocket.to(`user:${otherSideId}`).emit("messageReaction", {
+        messageId: message._id.toString(),
+        react: {
+            react,
+            user: {
+                _id: user._id,
+                userProfileImage: user!.userProfileImage,
+                name: user!.name,
+            },
+        },
+    });
     await (
         await message.save()
     ).populate("reacts.user", "name userProfileImage");
