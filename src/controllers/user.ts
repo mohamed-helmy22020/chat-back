@@ -33,6 +33,9 @@ export const updateUserData = async (req: Request, res: Response) => {
     if (settings) {
         const settingsParsed = JSON.parse(settings);
         userData.settings = settingsParsed;
+        if (userData.settings.privacy.online === "None") {
+            onlineUsers.delete(user._id.toString());
+        }
     }
     if (name && name.length <= 25) {
         userData.name = name;
@@ -237,7 +240,8 @@ export const getFriendsList = async (req: Request, res: Response) => {
 
     const friends = fetchedFriends.map((friend) => {
         if (friend.from._id.toString() === user._id.toString()) {
-            const {settings, ...rest} = (friend.to as any)._doc as unknown as Pick<
+            const { settings, ...rest } = (friend.to as any)
+                ._doc as unknown as Pick<
                 IUser,
                 "name" | "userProfileImage" | "settings"
             >;
@@ -249,10 +253,11 @@ export const getFriendsList = async (req: Request, res: Response) => {
                         : !!onlineUsers.get(friend.to._id.toString()),
             };
         }
-        const {settings, ...rest} = (friend.from as any)._doc as unknown as Pick<
-                IUser,
-                "name" | "userProfileImage" | "settings"
-            >;
+        const { settings, ...rest } = (friend.from as any)
+            ._doc as unknown as Pick<
+            IUser,
+            "name" | "userProfileImage" | "settings"
+        >;
 
         return {
             ...rest,

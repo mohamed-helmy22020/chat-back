@@ -20,17 +20,20 @@ const getPrivateConversation = async (
     userIdA: mongoose.Types.ObjectId,
     userIdB: mongoose.Types.ObjectId
 ): Promise<ConversationType> => {
+    if (userIdA.toString() === userIdB.toString()) {
+        throw new BadRequestError("No Conversation");
+    }
     const [id1, id2] = [userIdA.toString(), userIdB.toString()].sort();
 
     let conversation = await Conversation.findOne({
         participants: {
-            $size: 2,
             $all: [id1, id2],
         },
     }).populate(
         "lastMessage",
         "from to text seen mediaType mediaUrl createdAt updatedAt"
     );
+    console.log({ conversation });
 
     if (!conversation) {
         conversation = await Conversation.create({
@@ -371,6 +374,31 @@ export const getUserConversation = async (req: Request, res: Response) => {
         await getPrivateConversation(
             user._id as mongoose.Types.ObjectId,
             new mongoose.Types.ObjectId(otherSideUserId)
+        )
+    ).populate("participants", "name userProfileImage");
+    res.status(StatusCodes.OK).json({
+        success: true,
+        conversation: conversation.getData(),
+    });
+};
+
+export const getUserConversationWithEmail = async (
+    req: Request,
+    res: Response
+) => {
+    const user = req.user;
+    const { email: otherSideEmail } = req.params;
+
+    const otherSide = await User.findOne({
+        email: otherSideEmail,
+    });
+    if (!otherSide) {
+        throw new BadRequestError("No user with this id");
+    }
+    const conversation = await (
+        await getPrivateConversation(
+            user._id as mongoose.Types.ObjectId,
+            new mongoose.Types.ObjectId(otherSide._id)
         )
     ).populate("participants", "name userProfileImage");
     res.status(StatusCodes.OK).json({

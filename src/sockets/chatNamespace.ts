@@ -76,9 +76,7 @@ const registerChatNamespace = (io: Server) => {
                 }
                 await call(socket, to, callType, ack);
             } catch (error) {
-                chatNamespace
-                    .to(`user:${user._id.toString()}`)
-                    .emit("errors", error.message);
+                ack({ success: false, error: error.message });
             }
         });
 
@@ -106,13 +104,15 @@ const registerChatNamespace = (io: Server) => {
         });
 
         socket.on("disconnect", () => {
-            onlineUsers.set(user._id.toString(), false);
-            try {
-                emitUserIsOnline(socket, false);
-            } catch (error) {
-                console.log(error);
+            if (user.settings.privacy.online !== "None") {
+                onlineUsers.set(user._id.toString(), false);
+                try {
+                    emitUserIsOnline(socket, false);
+                } catch (error) {
+                    console.log(error);
+                }
+                console.log("A user disconnected from chat namespace");
             }
-            console.log("A user disconnected from chat namespace");
         });
     });
 };

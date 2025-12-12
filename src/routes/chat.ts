@@ -6,6 +6,7 @@ import {
     getAllConversations,
     getConversationMessages,
     getUserConversation,
+    getUserConversationWithEmail,
 } from "../controllers/chat";
 const chatRouter = express.Router();
 
@@ -76,6 +77,9 @@ chatRouter.route("/conversations").get(getAllConversations);
  *         description: Internal Server Error
  */
 chatRouter.route("/conversations/user/:userId").get(getUserConversation);
+chatRouter
+    .route("/conversations/user/email/:email")
+    .get(getUserConversationWithEmail);
 
 /**
  * @openapi
