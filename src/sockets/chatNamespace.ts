@@ -21,7 +21,6 @@ const registerChatNamespace = (io: Server) => {
 
         socket.join(`user:${user._id.toString()}`);
         if (user.settings.privacy.online !== "None") {
-            console.log(user.settings.privacy.online);
             onlineUsers.set(user._id.toString(), true);
             try {
                 emitUserIsOnline(socket, true);

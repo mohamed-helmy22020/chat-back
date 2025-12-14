@@ -33,7 +33,6 @@ const getPrivateConversation = async (
         "lastMessage",
         "from to text seen mediaType mediaUrl createdAt updatedAt"
     );
-    console.log({ conversation });
 
     if (!conversation) {
         conversation = await Conversation.create({
@@ -313,6 +312,7 @@ export const addMessageReaction = async (req: Request, res: Response) => {
             : message.to.toString();
     chatSocket.to(`user:${otherSideId}`).emit("messageReaction", {
         messageId: message._id.toString(),
+        conversationId: conversation._id.toString(),
         react: {
             react,
             user: {
@@ -333,6 +333,7 @@ export const addMessageReaction = async (req: Request, res: Response) => {
 };
 
 export const deleteMessage = async (req: Request, res: Response) => {
+    const chatSocket = getIO().of("/api/chat");
     const user = req.user;
     const { messageId } = req.params;
     const message = await Message.findById(messageId);
@@ -342,21 +343,31 @@ export const deleteMessage = async (req: Request, res: Response) => {
     if (!message.from.equals(user._id as mongoose.Types.ObjectId)) {
         throw new UnauthenticatedError("You can only delete your messages");
     }
+    const otherSideId =
+        message.from.toString() !== user._id.toString()
+            ? message.from.toString()
+            : message.to.toString();
     const conversation = await Conversation.findById(message.conversationId);
+
     await message.deleteOne();
     if (conversation.lastMessage.toString() === message._id.toString()) {
         const newLastMessage = await Message.findOne({
             conversationId: conversation._id,
-        })
-            .sort({ createdAt: -1 })
-            .exec();
+        }).sort({ createdAt: -1 });
         if (newLastMessage) {
             conversation.lastMessage =
                 newLastMessage._id as mongoose.Types.ObjectId;
         } else {
             conversation.lastMessage = null;
         }
+        await conversation.save();
     }
+
+    chatSocket.to(`user:${otherSideId}`).emit("messageDeleted", {
+        messageId: message._id.toString(),
+        conversationId: conversation._id.toString(),
+    });
+
     res.status(StatusCodes.OK).json({
         success: true,
         message: "Message deleted successfully",
