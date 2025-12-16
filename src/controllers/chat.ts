@@ -468,3 +468,65 @@ export const seeMessages = async (
         ack({ success: true });
     }
 };
+
+export const forwardMessage = async (req: Request, res: Response) => {
+    const chatSocket = getIO().of("/api/chat");
+    const user = req.user;
+    const { messageId } = req.params;
+    const { to } = req.body;
+    if (!messageId || !to) {
+        throw new BadRequestError("Please provide messageId and the person");
+    }
+    const message = await Message.findById(messageId);
+    if (!message) {
+        throw new BadRequestError("No message with this id");
+    }
+    const otherSide = await User.findById(to);
+    if (!otherSide) {
+        throw new BadRequestError("No user with this id");
+    }
+    if (
+        !message.from.equals(user._id as mongoose.Types.ObjectId) &&
+        !message.to.equals(user._id as mongoose.Types.ObjectId)
+    ) {
+        console.log(message.from, message.to, user._id);
+        throw new UnauthenticatedError("You can't forward this message");
+    }
+    if (
+        user.blockList.includes(otherSide._id as mongoose.Types.ObjectId) ||
+        otherSide.blockList.includes(user._id as mongoose.Types.ObjectId)
+    ) {
+        throw new UnauthenticatedError(
+            "You can't forward this message to this user"
+        );
+    }
+
+    const conversation = await getPrivateConversation(
+        user._id as mongoose.Types.ObjectId,
+        otherSide._id
+    );
+    const newMessage = await Message.create({
+        conversationId: conversation._id,
+        from: user._id as mongoose.Types.ObjectId,
+        to: otherSide._id,
+        text: message.text,
+        mediaUrl: message.mediaUrl,
+        mediaType: message.mediaType,
+        seen: false,
+    });
+    conversation.lastMessage = newMessage._id as mongoose.Types.ObjectId;
+    await (
+        await conversation.save()
+    ).populate("participants", "name userProfileImage");
+
+    const response = {
+        success: true,
+        message: newMessage.getData(),
+        conversation: {
+            ...conversation.getData(),
+            lastMessage: newMessage.getData(),
+        },
+    };
+    chatSocket.to(`user:${to}`).emit("receiveMessage", response);
+    res.status(StatusCodes.OK).json(response);
+};

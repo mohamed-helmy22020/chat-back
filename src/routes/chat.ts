@@ -3,6 +3,7 @@ import {
     addMessageReaction,
     deleteConversation,
     deleteMessage,
+    forwardMessage,
     getAllConversations,
     getConversationMessages,
     getUserConversation,
@@ -123,6 +124,7 @@ chatRouter
 
 chatRouter.route("/conversations/:conversationId").delete(deleteConversation);
 
+chatRouter.route("/message/forward/:messageId").post(forwardMessage);
 /**
  * @openapi
  * /chat/message/{messageId}/react:

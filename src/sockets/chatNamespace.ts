@@ -59,9 +59,7 @@ const registerChatNamespace = (io: Server) => {
             try {
                 await seeMessages(socket, to, ack);
             } catch (error) {
-                chatNamespace
-                    .to(`user:${user._id.toString()}`)
-                    .emit("errors", error.message);
+                console.log(error);
             }
         });
 
