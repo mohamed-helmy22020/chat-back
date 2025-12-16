@@ -8,6 +8,7 @@ export interface MessageType extends mongoose.Document {
     text: string;
     mediaUrl: string;
     mediaType: "image" | "video" | "";
+    replyMessage: mongoose.Types.ObjectId;
     seen: boolean;
     reacts: ReactType[];
     getData: () => any;
@@ -46,6 +47,11 @@ const messageSchema = new mongoose.Schema(
             enum: ["image", "video", ""],
             required: false,
             default: "",
+        },
+        replyMessage: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Message",
+            required: false,
         },
         seen: {
             type: Boolean,
@@ -135,6 +141,7 @@ messageSchema.methods.getData = function () {
         text: this.text,
         mediaUrl: this.mediaUrl,
         mediaType: this.mediaType,
+        replyMessage: this.replyMessage,
         seen: this.seen,
         reacts: this.reacts,
         createdAt: this.createdAt,

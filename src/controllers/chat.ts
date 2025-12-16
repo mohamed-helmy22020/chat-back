@@ -50,11 +50,19 @@ const getPrivateConversation = async (
 
 export const sendMessage = async (
     socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
-    to: mongoose.Types.ObjectId,
-    text: string,
-    media?: {
-        buffer: Buffer;
-        mimetype: string;
+    {
+        to,
+        text,
+        media,
+        replyMessage,
+    }: {
+        to: mongoose.Types.ObjectId;
+        text: string;
+        media?: {
+            buffer: Buffer;
+            mimetype: string;
+        };
+        replyMessage?: mongoose.Types.ObjectId;
     },
     ack?: (response: any) => void
 ) => {
@@ -87,6 +95,9 @@ export const sendMessage = async (
         text,
         mediaUrl: "",
         mediaType: "",
+        replyMessage: replyMessage
+            ? new mongoose.Types.ObjectId(replyMessage)
+            : undefined,
     };
 
     if (media) {
@@ -115,7 +126,12 @@ export const sendMessage = async (
         }
     }
 
-    const message = await Message.create(messageData);
+    const message = await (
+        await Message.create(messageData)
+    ).populate(
+        "replyMessage",
+        "from to text seen mediaType mediaUrl createdAt updatedAt"
+    );
 
     conversation.lastMessage = new mongoose.Types.ObjectId(
         message._id.toString()
@@ -124,28 +140,23 @@ export const sendMessage = async (
         await conversation.save()
     ).populate("participants", "name userProfileImage");
 
+    const response = {
+        success: true,
+        message: message.getData(),
+        conversation: {
+            ...conversation.getData(),
+            lastMessage: message.getData(),
+        },
+    };
+
     if (ack) {
-        ack({
-            success: true,
-            message: message.getData(),
-            conversation: {
-                ...conversation.getData(),
-                lastMessage: message.getData(),
-            },
-        });
+        ack(response);
     }
 
     chatNamespace
         .to(`user:${to}`)
         .to(`user:${user._id.toString()}`)
-        .emit("receiveMessage", {
-            success: true,
-            message: message.getData(),
-            conversation: {
-                ...conversation.getData(),
-                lastMessage: message.getData(),
-            },
-        });
+        .emit("receiveMessage", response);
 
     chatNamespace.to(`user:${to}`).emit("typing", {
         conversationId: conversation._id,
@@ -264,7 +275,13 @@ export const getConversationMessages = async (req: Request, res: Response) => {
         .sort({ createdAt: -1 })
         .limit(LIMIT)
         .populate("reacts.user", "name userProfileImage")
+        .populate({
+            path: "replyMessage",
+            select: "from text mediaType mediaUrl createdAt updatedAt",
+        })
+        .populate("replyMessage.from", "name")
         .then((docs) => docs.map((doc) => doc.getData()));
+    console.log(messages[0].replyMessage);
 
     res.status(StatusCodes.OK).json({
         success: true,
