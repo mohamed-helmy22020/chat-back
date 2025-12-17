@@ -281,7 +281,6 @@ export const getConversationMessages = async (req: Request, res: Response) => {
         })
         .populate("replyMessage.from", "name")
         .then((docs) => docs.map((doc) => doc.getData()));
-    console.log(messages[0].replyMessage);
 
     res.status(StatusCodes.OK).json({
         success: true,
@@ -506,7 +505,6 @@ export const forwardMessage = async (req: Request, res: Response) => {
         !message.from.equals(user._id as mongoose.Types.ObjectId) &&
         !message.to.equals(user._id as mongoose.Types.ObjectId)
     ) {
-        console.log(message.from, message.to, user._id);
         throw new UnauthenticatedError("You can't forward this message");
     }
     if (
