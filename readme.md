@@ -51,7 +51,7 @@ Download Front End app [Front End Aapp](https://github.com/mohamed-helmy22020/ch
 
 ```bash
 # Clone the repo (if not already)
-git clone https://github.com/your-username/chat-back.git
+git clone https://github.com/mohamed-helmy22020/chat-back.git
 cd chat-back
 
 # Install dependencies
