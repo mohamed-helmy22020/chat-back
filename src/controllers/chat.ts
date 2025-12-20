@@ -29,26 +29,38 @@ const getPrivateConversation = async (
         participants: {
             $all: [id1, id2],
         },
-    }).populate(
-        "lastMessage",
-        "from to text seen mediaType mediaUrl createdAt updatedAt"
-    );
+    }).populate([
+        {
+            path: "lastMessage",
+            select: "from to text seen mediaType mediaUrl createdAt updatedAt",
+            populate: {
+                path: "from",
+                select: "name userProfileImage",
+            },
+        },
+    ]);
 
     if (!conversation) {
         conversation = await Conversation.create({
             participants: [id1, id2],
         }).then((conv) =>
-            conv.populate(
-                "lastMessage",
-                "from to text seen mediaType mediaUrl createdAt updatedAt"
-            )
+            conv.populate([
+                {
+                    path: "lastMessage",
+                    select: "from to text seen mediaType mediaUrl createdAt updatedAt",
+                    populate: {
+                        path: "from",
+                        select: "name userProfileImage",
+                    },
+                },
+            ])
         );
     }
 
     return conversation as unknown as ConversationType;
 };
 
-export const sendMessage = async (
+export const sendPrivateMessage = async (
     socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
     {
         to,
@@ -125,13 +137,18 @@ export const sendMessage = async (
             throw new Error("Error uploading media");
         }
     }
-
-    const message = await (
-        await Message.create(messageData)
-    ).populate(
-        "replyMessage",
-        "from to text seen mediaType mediaUrl createdAt updatedAt"
-    );
+    const createdMessage = await Message.create(messageData);
+    const message = await Message.findById(createdMessage._id).populate([
+        {
+            path: "replyMessage",
+            select: "from to text seen mediaType mediaUrl createdAt updatedAt",
+            populate: {
+                path: "from",
+                select: "name userProfileImage",
+            },
+        },
+        { path: "from", select: "name userProfileImage" },
+    ]);
 
     conversation.lastMessage = new mongoose.Types.ObjectId(
         message._id.toString()
@@ -163,6 +180,7 @@ export const sendMessage = async (
         isTyping: false,
     });
 };
+
 export const sendTyping = async (
     socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
     to: mongoose.Types.ObjectId,
@@ -196,10 +214,16 @@ export const getAllConversations = (req: Request, res: Response) => {
             $in: [user._id],
         },
     })
-        .populate(
-            "lastMessage",
-            "from to text seen mediaType mediaUrl createdAt updatedAt"
-        )
+        .populate([
+            {
+                path: "lastMessage",
+                select: "from to text seen mediaType mediaUrl createdAt updatedAt",
+                populate: {
+                    path: "from",
+                    select: "name userProfileImage",
+                },
+            },
+        ])
         .populate("participants", "name userProfileImage")
         .sort("-updatedAt")
         .then((conversations) => {
@@ -207,33 +231,52 @@ export const getAllConversations = (req: Request, res: Response) => {
                 success: true,
                 conversations: conversations
                     .filter((convo) => {
+                        if (convo.type === "group") {
+                            return true;
+                        }
                         const cutoff =
                             convo?.userSettings?.get(user._id.toString())
                                 ?.messages_cleared_at || new Date(0);
                         const lastMessage = convo.lastMessage as MessageType;
                         return lastMessage?.createdAt > cutoff;
                     })
-                    .map((conv) => conv.getData()),
+                    .map((conv) => {
+                        const cutoff =
+                            conv?.userSettings?.get(user._id.toString())
+                                ?.messages_cleared_at || new Date(0);
+                        const lastMessage = conv.lastMessage as MessageType;
+                        return {
+                            ...conv.getData(),
+                            lastMessage:
+                                lastMessage?.createdAt > cutoff
+                                    ? lastMessage
+                                    : null,
+                        };
+                    }),
             });
         });
 };
 
 export const getConversationMessages = async (req: Request, res: Response) => {
     const user = req.user;
-    const { userId: otherSideUserId } = req.params;
+    const { conversationId } = req.params;
     const { before } = req.query; // ISO string of createdAt
 
     const LIMIT = Math.min(parseInt(req.query.limit as string, 10) || 20, 50);
 
-    const otherSide = await User.findById(otherSideUserId);
-    if (!otherSide) {
-        throw new BadRequestError("No user with this id");
+    const conversation = await Conversation.findById(conversationId).populate([
+        {
+            path: "lastMessage",
+            select: "from to text seen mediaType mediaUrl createdAt updatedAt",
+            populate: {
+                path: "from",
+                select: "name userProfileImage",
+            },
+        },
+    ]);
+    if (!conversation) {
+        throw new BadRequestError("No conversation with this id");
     }
-
-    const conversation = await getPrivateConversation(
-        user._id as mongoose.Types.ObjectId,
-        new mongoose.Types.ObjectId(otherSideUserId)
-    );
 
     if (
         !conversation.participants.includes(user._id as mongoose.Types.ObjectId)
@@ -248,7 +291,7 @@ export const getConversationMessages = async (req: Request, res: Response) => {
     if (
         conversationLastMessage &&
         !conversationLastMessage.seen &&
-        conversationLastMessage.from.toString() !== user._id.toString()
+        conversationLastMessage.from._id.toString() !== user._id.toString()
     ) {
         conversationLastMessage.seen = true;
         await conversationLastMessage.save();
@@ -275,11 +318,17 @@ export const getConversationMessages = async (req: Request, res: Response) => {
         .sort({ createdAt: -1 })
         .limit(LIMIT)
         .populate("reacts.user", "name userProfileImage")
-        .populate({
-            path: "replyMessage",
-            select: "from text mediaType mediaUrl createdAt updatedAt",
-        })
-        .populate("replyMessage.from", "name")
+        .populate([
+            {
+                path: "replyMessage",
+                select: "from to text seen mediaType mediaUrl createdAt updatedAt",
+                populate: {
+                    path: "from",
+                    select: "name userProfileImage",
+                },
+            },
+        ])
+        .populate("from", "name userProfileImage")
         .then((docs) => docs.map((doc) => doc.getData()));
 
     res.status(StatusCodes.OK).json({
@@ -322,11 +371,8 @@ export const addMessageReaction = async (req: Request, res: Response) => {
             user: user._id as mongoose.Types.ObjectId,
         });
     }
-    const otherSideId =
-        message.from.toString() !== user._id.toString()
-            ? message.from.toString()
-            : message.to.toString();
-    chatSocket.to(`user:${otherSideId}`).emit("messageReaction", {
+
+    const emitRes = {
         messageId: message._id.toString(),
         conversationId: conversation._id.toString(),
         react: {
@@ -337,7 +383,18 @@ export const addMessageReaction = async (req: Request, res: Response) => {
                 name: user!.name,
             },
         },
-    });
+    };
+    if (conversation.type === "private") {
+        const otherSideId =
+            message.from.toString() !== user._id.toString()
+                ? message.from.toString()
+                : message.to.toString();
+        chatSocket.to(`user:${otherSideId}`).emit("messageReaction", emitRes);
+    } else if (conversation.type === "group") {
+        chatSocket
+            .to(`conversation:${conversation._id}`)
+            .emit("messageReaction", emitRes);
+    }
     await (
         await message.save()
     ).populate("reacts.user", "name userProfileImage");
@@ -359,10 +416,7 @@ export const deleteMessage = async (req: Request, res: Response) => {
     if (!message.from.equals(user._id as mongoose.Types.ObjectId)) {
         throw new UnauthenticatedError("You can only delete your messages");
     }
-    const otherSideId =
-        message.from.toString() !== user._id.toString()
-            ? message.from.toString()
-            : message.to.toString();
+
     const conversation = await Conversation.findById(message.conversationId);
 
     await message.deleteOne();
@@ -378,11 +432,22 @@ export const deleteMessage = async (req: Request, res: Response) => {
         }
         await conversation.save();
     }
-
-    chatSocket.to(`user:${otherSideId}`).emit("messageDeleted", {
+    const emitRes = {
         messageId: message._id.toString(),
         conversationId: conversation._id.toString(),
-    });
+    };
+
+    if (conversation.type === "private") {
+        const otherSideId =
+            message.from.toString() !== user._id.toString()
+                ? message.from.toString()
+                : message.to.toString();
+        chatSocket.to(`user:${otherSideId}`).emit("messageDeleted", emitRes);
+    } else if (conversation.type === "group") {
+        chatSocket
+            .to(`conversation:${conversation._id}`)
+            .emit("messageDeleted", emitRes);
+    }
 
     res.status(StatusCodes.OK).json({
         success: true,
@@ -485,7 +550,7 @@ export const seeMessages = async (
     }
 };
 
-export const forwardMessage = async (req: Request, res: Response) => {
+export const forwardMessageToPrivate = async (req: Request, res: Response) => {
     const chatSocket = getIO().of("/api/chat");
     const user = req.user;
     const { messageId } = req.params;
@@ -520,15 +585,17 @@ export const forwardMessage = async (req: Request, res: Response) => {
         user._id as mongoose.Types.ObjectId,
         otherSide._id
     );
-    const newMessage = await Message.create({
-        conversationId: conversation._id,
-        from: user._id as mongoose.Types.ObjectId,
-        to: otherSide._id,
-        text: message.text,
-        mediaUrl: message.mediaUrl,
-        mediaType: message.mediaType,
-        seen: false,
-    });
+    const newMessage = await (
+        await Message.create({
+            conversationId: conversation._id,
+            from: user._id as mongoose.Types.ObjectId,
+            to: otherSide._id,
+            text: message.text,
+            mediaUrl: message.mediaUrl,
+            mediaType: message.mediaType,
+            seen: false,
+        })
+    ).populate("from", "name userProfileImage");
     conversation.lastMessage = newMessage._id as mongoose.Types.ObjectId;
     await (
         await conversation.save()

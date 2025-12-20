@@ -4,7 +4,7 @@ import { ReactType } from "types";
 export interface MessageType extends mongoose.Document {
     conversationId: mongoose.Types.ObjectId;
     from: mongoose.Types.ObjectId;
-    to: mongoose.Types.ObjectId;
+    to?: mongoose.Types.ObjectId;
     text: string;
     mediaUrl: string;
     mediaType: "image" | "video" | "";
@@ -31,7 +31,7 @@ const messageSchema = new mongoose.Schema(
         to: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
-            required: [true, "Please provide receiver user"],
+            required: false,
         },
         text: {
             type: String,
