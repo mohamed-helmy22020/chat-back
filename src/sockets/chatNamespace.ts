@@ -1,15 +1,22 @@
 import { type Request } from "express";
 import { Server } from "socket.io";
 import { call, sendSignalData } from "../controllers/call";
-import { seeMessages, sendMessage, sendTyping } from "../controllers/chat";
+import {
+    seeMessages,
+    sendPrivateMessage,
+    sendTyping,
+} from "../controllers/chat";
+
+import { sendGroupMessage } from "../controllers/group";
 import { emitUserIsOnline } from "../controllers/user";
 import { checkSocketPics } from "../middleware/checkFiles";
+import Conversation from "../models/Conversation";
 
 export const onlineUsers = new Map<string, boolean>();
 
 const registerChatNamespace = (io: Server) => {
     const chatNamespace = io.of("/api/chat");
-    chatNamespace.on("connection", (socket) => {
+    chatNamespace.on("connection", async (socket) => {
         console.log("A user connected to chat namespace");
 
         const req = socket.request as Request;
@@ -20,6 +27,15 @@ const registerChatNamespace = (io: Server) => {
         }
 
         socket.join(`user:${user._id.toString()}`);
+        const groups = (
+            await Conversation.find({
+                participants: {
+                    $in: [user._id],
+                },
+                type: "group",
+            })
+        ).map((g) => `conversation:${g._id.toString()}`);
+        socket.join(groups);
         if (user.settings.privacy.online !== "None") {
             onlineUsers.set(user._id.toString(), true);
             try {
@@ -39,9 +55,33 @@ const registerChatNamespace = (io: Server) => {
                     if (media) {
                         checkSocketPics(media);
                     }
-                    await sendMessage(
+                    await sendPrivateMessage(
                         socket,
                         { to, text, media, replyMessage },
+                        ack
+                    );
+                } catch (error) {
+                    if (ack) ack({ success: false, error: error.message });
+                    chatNamespace
+                        .to(`user:${user._id.toString()}`)
+                        .emit("errors", error.message);
+                }
+            }
+        );
+
+        socket.on(
+            "sendGroupMessage",
+            async ({ conversationId, text, media, replyMessage }, ack) => {
+                try {
+                    if (!media && !text) {
+                        throw new Error("Message text or media is required.");
+                    }
+                    if (media) {
+                        checkSocketPics(media);
+                    }
+                    await sendGroupMessage(
+                        socket,
+                        { conversationId, text, media, replyMessage },
                         ack
                     );
                 } catch (error) {

@@ -3,12 +3,20 @@ import {
     addMessageReaction,
     deleteConversation,
     deleteMessage,
-    forwardMessage,
+    forwardMessageToPrivate,
     getAllConversations,
     getConversationMessages,
     getUserConversation,
     getUserConversationWithEmail,
 } from "../controllers/chat";
+import {
+    addUserToGroup,
+    createGroup,
+    deleteGroup,
+    forwardMessageToGroup,
+    leaveGroup,
+    removeUserFromGroup,
+} from "../controllers/group";
 const chatRouter = express.Router();
 
 /**
@@ -119,12 +127,23 @@ chatRouter
  *         description: Internal Server Error
  */
 chatRouter
-    .route("/conversations/messages/:userId")
+    .route("/conversations/messages/:conversationId")
     .get(getConversationMessages);
 
 chatRouter.route("/conversations/:conversationId").delete(deleteConversation);
 
-chatRouter.route("/message/forward/:messageId").post(forwardMessage);
+chatRouter
+    .route("/message/forward/:messageId/private")
+    .post(forwardMessageToPrivate);
+
+chatRouter
+    .route("/message/forward/:messageId/group")
+    .post(forwardMessageToGroup);
+chatRouter.route("/group").post(createGroup);
+chatRouter.route("/group/:groupId").delete(deleteGroup);
+chatRouter.route("/group/:groupId/leave").post(leaveGroup);
+chatRouter.route("/group/:groupId/user/add").post(addUserToGroup);
+chatRouter.route("/group/:groupId/user/remove").post(removeUserFromGroup);
 /**
  * @openapi
  * /chat/message/{messageId}/react:

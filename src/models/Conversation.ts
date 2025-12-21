@@ -5,6 +5,11 @@ export interface ConversationType extends mongoose.Document {
     participants: mongoose.Types.ObjectId[];
     lastMessage: mongoose.Types.ObjectId | MessageType;
     userSettings: Map<string, { messages_cleared_at: Date | null }>;
+    type: "group" | "private";
+    desc: string;
+    groupImage: string;
+    admin: mongoose.Types.ObjectId;
+    groupName: string;
     getData: () => any;
 }
 
@@ -34,6 +39,28 @@ const conversationSchema = new mongoose.Schema(
             type: Map,
             of: UserSettingsSchema,
             default: {},
+        },
+        type: {
+            type: String,
+            enum: ["private", "group"],
+            default: "private",
+        },
+        desc: {
+            type: String,
+            default: "",
+        },
+        groupImage: {
+            type: String,
+            default: "",
+        },
+        admin: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            default: null,
+        },
+        groupName: {
+            type: String,
+            default: null,
         },
     },
     {
@@ -67,6 +94,11 @@ conversationSchema.methods.getData = function () {
         id: this._id,
         participants: this.participants,
         lastMessage: this.lastMessage,
+        type: this.type,
+        desc: this.desc,
+        groupImage: this.groupImage,
+        admin: this.admin,
+        groupName: this.groupName,
         createdAt: this.createdAt,
         updatedAt: this.updatedAt,
     };
