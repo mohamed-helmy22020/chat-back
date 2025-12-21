@@ -35,7 +35,7 @@ const getPrivateConversation = async (
             select: "from to text seen mediaType mediaUrl createdAt updatedAt",
             populate: {
                 path: "from",
-                select: "name userProfileImage",
+                select: "name userProfileImage email bio",
             },
         },
     ]);
@@ -50,7 +50,7 @@ const getPrivateConversation = async (
                     select: "from to text seen mediaType mediaUrl createdAt updatedAt",
                     populate: {
                         path: "from",
-                        select: "name userProfileImage",
+                        select: "name userProfileImage email bio",
                     },
                 },
             ])
@@ -144,10 +144,10 @@ export const sendPrivateMessage = async (
             select: "from to text seen mediaType mediaUrl createdAt updatedAt",
             populate: {
                 path: "from",
-                select: "name userProfileImage",
+                select: "name userProfileImage email bio",
             },
         },
-        { path: "from", select: "name userProfileImage" },
+        { path: "from", select: "name userProfileImage email bio" },
     ]);
 
     conversation.lastMessage = new mongoose.Types.ObjectId(
@@ -155,7 +155,7 @@ export const sendPrivateMessage = async (
     );
     await (
         await conversation.save()
-    ).populate("participants", "name userProfileImage");
+    ).populate("participants", "name userProfileImage email bio");
 
     const response = {
         success: true,
@@ -220,11 +220,11 @@ export const getAllConversations = (req: Request, res: Response) => {
                 select: "from to text seen mediaType mediaUrl createdAt updatedAt",
                 populate: {
                     path: "from",
-                    select: "name userProfileImage",
+                    select: "name userProfileImage email bio",
                 },
             },
         ])
-        .populate("participants", "name userProfileImage")
+        .populate("participants", "name userProfileImage email bio")
         .sort("-updatedAt")
         .then((conversations) => {
             res.status(200).json({
@@ -270,7 +270,7 @@ export const getConversationMessages = async (req: Request, res: Response) => {
             select: "from to text seen mediaType mediaUrl createdAt updatedAt",
             populate: {
                 path: "from",
-                select: "name userProfileImage",
+                select: "name userProfileImage email bio",
             },
         },
     ]);
@@ -294,6 +294,7 @@ export const getConversationMessages = async (req: Request, res: Response) => {
         conversationLastMessage.from._id.toString() !== user._id.toString()
     ) {
         conversationLastMessage.seen = true;
+        conversationLastMessage.seenAt = new Date();
         await conversationLastMessage.save();
     }
 
@@ -317,18 +318,18 @@ export const getConversationMessages = async (req: Request, res: Response) => {
     const messages = await Message.find(query)
         .sort({ createdAt: -1 })
         .limit(LIMIT)
-        .populate("reacts.user", "name userProfileImage")
+        .populate("reacts.user", "name userProfileImage email bio")
         .populate([
             {
                 path: "replyMessage",
                 select: "from to text seen mediaType mediaUrl createdAt updatedAt",
                 populate: {
                     path: "from",
-                    select: "name userProfileImage",
+                    select: "name userProfileImage email bio",
                 },
             },
         ])
-        .populate("from", "name userProfileImage")
+        .populate("from", "name userProfileImage email bio")
         .then((docs) => docs.map((doc) => doc.getData()));
 
     res.status(StatusCodes.OK).json({
@@ -397,7 +398,7 @@ export const addMessageReaction = async (req: Request, res: Response) => {
     }
     await (
         await message.save()
-    ).populate("reacts.user", "name userProfileImage");
+    ).populate("reacts.user", "name userProfileImage email bio");
 
     res.status(StatusCodes.OK).json({
         success: true,
@@ -467,7 +468,7 @@ export const getUserConversation = async (req: Request, res: Response) => {
             user._id as mongoose.Types.ObjectId,
             new mongoose.Types.ObjectId(otherSideUserId)
         )
-    ).populate("participants", "name userProfileImage");
+    ).populate("participants", "name userProfileImage email bio");
     res.status(StatusCodes.OK).json({
         success: true,
         conversation: conversation.getData(),
@@ -492,7 +493,7 @@ export const getUserConversationWithEmail = async (
             user._id as mongoose.Types.ObjectId,
             new mongoose.Types.ObjectId(otherSide._id)
         )
-    ).populate("participants", "name userProfileImage");
+    ).populate("participants", "name userProfileImage email bio");
     res.status(StatusCodes.OK).json({
         success: true,
         conversation: conversation.getData(),
@@ -542,6 +543,7 @@ export const seeMessages = async (
         },
         {
             seen: true,
+            seenAt: new Date(),
         }
     );
     socket.to(`user:${to}`).emit("messagesSeen");
@@ -595,11 +597,11 @@ export const forwardMessageToPrivate = async (req: Request, res: Response) => {
             mediaType: message.mediaType,
             seen: false,
         })
-    ).populate("from", "name userProfileImage");
+    ).populate("from", "name userProfileImage email bio");
     conversation.lastMessage = newMessage._id as mongoose.Types.ObjectId;
     await (
         await conversation.save()
-    ).populate("participants", "name userProfileImage");
+    ).populate("participants", "name userProfileImage email bio");
 
     const response = {
         success: true,

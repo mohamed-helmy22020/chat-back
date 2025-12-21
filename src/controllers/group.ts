@@ -26,7 +26,7 @@ export const createGroup = async (req: Request, res: Response) => {
             admin: user._id,
             groupName: name,
         })
-    ).populate("participants", "name userProfileImage");
+    ).populate("participants", "name userProfileImage email bio");
     res.status(StatusCodes.CREATED).json({
         success: true,
         group: group.getData(),
@@ -79,11 +79,11 @@ export const addUserToGroup = async (req: Request, res: Response) => {
                     select: "from to text seen mediaType mediaUrl createdAt updatedAt",
                     populate: {
                         path: "from",
-                        select: "name userProfileImage",
+                        select: "name userProfileImage email bio",
                     },
                 },
             ])
-            .populate("participants", "name userProfileImage"),
+            .populate("participants", "name userProfileImage email bio"),
         User.findOne({
             $or: [{ _id: userIdOrEmail }, { email: userIdOrEmail }],
         }),
@@ -143,8 +143,12 @@ export const removeUserFromGroup = async (req: Request, res: Response) => {
         .in(`user:${deletedUser._id}`)
         .socketsLeave(`conversation:${group._id}`);
     chatSocket
-        .to(`conversation:${deletedUser._id}`)
-        .emit("deletedFromGroup", deletedUser.getData("userRequest"));
+        .to(`conversation:${group._id}`)
+        .to(`user:${deletedUser._id}`)
+        .emit("deletedFromGroup", {
+            groupId: group._id,
+            userId: deletedUser._id,
+        });
     res.status(StatusCodes.OK).json({
         success: true,
     });
@@ -179,7 +183,7 @@ export const sendGroupMessage = async (
             select: "from to text seen mediaType mediaUrl createdAt updatedAt",
             populate: {
                 path: "from",
-                select: "name userProfileImage",
+                select: "name userProfileImage email bio",
             },
         },
     ]);
@@ -237,17 +241,17 @@ export const sendGroupMessage = async (
             select: "from to text seen mediaType mediaUrl createdAt updatedAt",
             populate: {
                 path: "from",
-                select: "name userProfileImage",
+                select: "name userProfileImage email bio",
             },
         },
-        { path: "from", select: "name userProfileImage" },
+        { path: "from", select: "name userProfileImage email bio" },
     ]);
     conversation.lastMessage = new mongoose.Types.ObjectId(
         message._id.toString()
     );
     await (
         await conversation.save()
-    ).populate("participants", "name userProfileImage");
+    ).populate("participants", "name userProfileImage email bio");
 
     const response = {
         success: true,
@@ -284,10 +288,10 @@ export const forwardMessageToGroup = async (req: Request, res: Response) => {
             select: "from to text seen mediaType mediaUrl createdAt updatedAt",
             populate: {
                 path: "from",
-                select: "name userProfileImage",
+                select: "name userProfileImage email bio",
             },
         },
-        { path: "participants", select: "name userProfileImage" },
+        { path: "participants", select: "name userProfileImage email bio" },
     ]);
     if (!conversation) {
         throw new BadRequestError("No conversation with this id");

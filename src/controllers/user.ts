@@ -235,8 +235,8 @@ export const getFriendsList = async (req: Request, res: Response) => {
         $or: [{ from: user._id }, { to: user._id }],
         status: "accepted",
     })
-        .populate("from", "name userProfileImage settings")
-        .populate("to", "name userProfileImage settings");
+        .populate("from", "name userProfileImage email bio settings")
+        .populate("to", "name userProfileImage email bio settings");
 
     const friends = fetchedFriends.map((friend) => {
         if (friend.from._id.toString() === user._id.toString()) {
@@ -276,7 +276,7 @@ export const getFriendRequests = async (req: Request, res: Response) => {
     const fetchedFriendRequests = await FriendRequest.find({
         to: user._id,
         status: "pending",
-    }).populate("from", "name userProfileImage");
+    }).populate("from", "name userProfileImage email bio");
 
     const friendRequests = fetchedFriendRequests.map((friendRequest) => {
         return friendRequest.from;
@@ -341,7 +341,7 @@ export const getSentRequests = async (req: Request, res: Response) => {
     const fetchedFriendRequests = await FriendRequest.find({
         from: user._id,
         status: "pending",
-    }).populate("to", "name userProfileImage");
+    }).populate("to", "name userProfileImage email bio");
 
     const sentRequests = fetchedFriendRequests.map((fr) => {
         return fr.to;

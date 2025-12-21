@@ -19,8 +19,8 @@ export const getUserStatuses = async (req: Request, res: Response) => {
     const statuses = await Status.find({ userId: user._id })
         .active()
         .sort({ createdAt: 1 })
-        .populate("userId", "_id name userProfileImage")
-        .populate("viewers.user", "_id name userProfileImage");
+        .populate("userId", "_id name userProfileImage email bio")
+        .populate("viewers.user", "_id name userProfileImage email bio");
     res.json({
         success: true,
         statuses: statuses.map((status) => status.getData()),
@@ -45,7 +45,7 @@ export const getFriendsStatuses = async (req: Request, res: Response) => {
     const statuses = await Status.find({ userId: { $in: friends } })
         .active()
         .sort({ createdAt: 1 })
-        .populate("userId", "_id name userProfileImage");
+        .populate("userId", "_id name userProfileImage email bio");
     res.json({
         success: true,
         statuses: statuses.map((status) => ({
@@ -105,7 +105,7 @@ export const createStatus = async (req: Request, res: Response) => {
 
     const status = await (
         await Status.create(statusData)
-    ).populate("userId", "_id name userProfileImage");
+    ).populate("userId", "_id name userProfileImage email bio");
 
     const friendsChannels = (
         await FriendRequest.find({

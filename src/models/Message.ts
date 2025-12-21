@@ -10,6 +10,7 @@ export interface MessageType extends mongoose.Document {
     mediaType: "image" | "video" | "";
     replyMessage: mongoose.Types.ObjectId;
     seen: boolean;
+    seenAt: Date;
     reacts: ReactType[];
     getData: () => any;
     createdAt: Date;
@@ -56,6 +57,10 @@ const messageSchema = new mongoose.Schema(
         seen: {
             type: Boolean,
             default: false,
+        },
+        seenAt: {
+            type: Date,
+            default: null,
         },
         reacts: {
             type: [
@@ -144,8 +149,10 @@ messageSchema.methods.getData = function () {
         replyMessage: this.replyMessage,
         seen: this.seen,
         reacts: this.reacts,
+        seenAt: this.seenAt,
         createdAt: this.createdAt,
         updatedAt: this.updatedAt,
     };
 };
+
 export default mongoose.model<MessageType & Document>("Message", messageSchema);
