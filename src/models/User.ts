@@ -32,6 +32,7 @@ const userSchema = new mongoose.Schema<IUser>(
             type: String,
             required: [true, "Please provide name"],
             match: [/^[a-zA-Z]+/, "Please provide a valid name"],
+            index: true,
         },
         email: {
             type: String,

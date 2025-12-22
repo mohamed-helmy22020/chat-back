@@ -12,11 +12,13 @@ const friendRequestSchema = new mongoose.Schema(
             type: mongoose.Types.ObjectId,
             ref: "User",
             required: [true, "Sender is required"],
+            index: true,
         },
         to: {
             type: mongoose.Types.ObjectId,
             ref: "User",
             required: [true, "Receiver is required"],
+            index: true,
         },
         status: {
             type: String,

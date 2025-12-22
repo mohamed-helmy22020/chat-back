@@ -23,6 +23,7 @@ const messageSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "Conversation",
             required: [true, "Please provide conversation id"],
+            index: true,
         },
         from: {
             type: mongoose.Schema.Types.ObjectId,
@@ -90,7 +91,7 @@ const messageSchema = new mongoose.Schema(
         timestamps: true,
     }
 );
-
+messageSchema.index({ createdAt: 1 });
 /**
  * @openapi
  * components:
