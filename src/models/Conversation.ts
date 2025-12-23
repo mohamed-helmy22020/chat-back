@@ -1,4 +1,5 @@
-import mongoose from "mongoose";
+import mongoose, { Document } from "mongoose";
+import { GroupSettingsType } from "types";
 import { MessageType } from "./Message";
 
 export interface ConversationType extends mongoose.Document {
@@ -10,7 +11,8 @@ export interface ConversationType extends mongoose.Document {
     groupImage: string;
     admin: mongoose.Types.ObjectId;
     groupName: string;
-    getData: () => any;
+    groupSettings: GroupSettingsType;
+    getData: (userType?: "user" | "admin" | "join") => any;
 }
 
 const UserSettingsSchema = new mongoose.Schema(
@@ -22,7 +24,7 @@ const UserSettingsSchema = new mongoose.Schema(
     },
     { _id: false }
 );
-const conversationSchema = new mongoose.Schema(
+const conversationSchema = new mongoose.Schema<ConversationType>(
     {
         participants: [
             {
@@ -40,6 +42,26 @@ const conversationSchema = new mongoose.Schema(
             type: Map,
             of: UserSettingsSchema,
             default: {},
+        },
+        groupSettings: {
+            type: Object,
+            default: function () {
+                if (this.type === "group") {
+                    return {
+                        linkToken: null,
+                        members: {
+                            editGroupData: true,
+                            sendNewMessages: true,
+                            addOtherMembers: false,
+                            inviteViaLink: false,
+                        },
+                        admin: {
+                            approveNewMembers: false,
+                        },
+                    };
+                }
+                return null;
+            },
         },
         type: {
             type: String,
@@ -90,19 +112,55 @@ const conversationSchema = new mongoose.Schema(
  *           type: string
  */
 
-conversationSchema.methods.getData = function () {
-    return {
-        id: this._id,
-        participants: this.participants,
-        lastMessage: this.lastMessage,
-        type: this.type,
-        desc: this.desc,
-        groupImage: this.groupImage,
-        admin: this.admin,
-        groupName: this.groupName,
-        createdAt: this.createdAt,
-        updatedAt: this.updatedAt,
-    };
+conversationSchema.methods.getData = function (
+    userType: "user" | "admin" | "join" = "user"
+) {
+    if (userType === "join") {
+        return {
+            id: this._id,
+            participants: { length: this.participants.length },
+            type: this.type,
+            desc: this.desc,
+            groupImage: this.groupImage,
+            admin: this.admin,
+            groupName: this.groupName,
+            createdAt: this.createdAt,
+            updatedAt: this.updatedAt,
+        };
+    }
+    if (this.type === "private") {
+        return {
+            id: this._id,
+            participants: this.participants,
+            lastMessage: this.lastMessage,
+            type: this.type,
+
+            createdAt: this.createdAt,
+            updatedAt: this.updatedAt,
+        };
+    } else if (this.type === "group") {
+        const { linkToken, ...groupSettings } = this.groupSettings;
+        return {
+            id: this._id,
+            participants: this.participants,
+            lastMessage: this.lastMessage,
+            type: this.type,
+            desc: this.desc,
+            groupImage: this.groupImage,
+            admin: this.admin,
+            groupName: this.groupName,
+            groupSettings: {
+                ...groupSettings,
+                linkToken:
+                    userType === "admin" ||
+                    this.groupSettings.members.inviteViaLink
+                        ? linkToken
+                        : undefined,
+            },
+            createdAt: this.createdAt,
+            updatedAt: this.updatedAt,
+        };
+    }
 };
 export default mongoose.model<ConversationType & Document>(
     "Conversation",

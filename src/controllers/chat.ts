@@ -246,7 +246,11 @@ export const getAllConversations = (req: Request, res: Response) => {
                                 ?.messages_cleared_at || new Date(0);
                         const lastMessage = conv.lastMessage as MessageType;
                         return {
-                            ...conv.getData(),
+                            ...conv.getData(
+                                conv.admin?.toString() === user._id.toString()
+                                    ? "admin"
+                                    : "user"
+                            ),
                             lastMessage:
                                 lastMessage?.createdAt > cutoff
                                     ? lastMessage

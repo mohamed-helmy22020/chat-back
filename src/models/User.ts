@@ -132,15 +132,7 @@ const userSchema = new mongoose.Schema<IUser>(
  *           default: false
  */
 userSchema.methods.getData = function (type: string = "all") {
-    if (type === "userRequest") {
-        return {
-            _id: this._id,
-            name: this.name,
-            userProfileImage: this.userProfileImage,
-            bio: this.bio,
-        };
-    }
-    if (type === "findUser") {
+    if (type === "userRequest" || type === "findUser") {
         return {
             _id: this._id,
             email: this.email,
@@ -193,8 +185,7 @@ userSchema.methods.encryptPassword = async function (password: string) {
 userSchema.methods.comparePassword = async function (
     candidatePassword: string
 ) {
-    const isMatch = await bcrypt.compare(candidatePassword, this.password);
-    return isMatch;
+    return await bcrypt.compare(candidatePassword, this.password);
 };
 
 export default mongoose.model<IUser & Document>("User", userSchema);

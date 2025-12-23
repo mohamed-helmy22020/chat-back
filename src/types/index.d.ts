@@ -17,3 +17,16 @@ type PrivacySettingsType = {
     online: "Everyone" | "Friends" | "None";
     readReceipts: "Enable" | "Disable";
 };
+
+type GroupSettingsType = {
+    linkToken: string | null;
+    members: {
+        editGroupData: boolean;
+        sendNewMessages: boolean;
+        addOtherMembers: boolean;
+        inviteViaLink: boolean;
+    };
+    admin: {
+        approveNewMembers: boolean;
+    };
+};

@@ -14,8 +14,13 @@ import {
     createGroup,
     deleteGroup,
     forwardMessageToGroup,
+    getGroupData,
+    getGroupLinkToken,
+    joinGroup,
     leaveGroup,
     removeUserFromGroup,
+    resetGroupLinkToken,
+    updateGroupSettings,
 } from "../controllers/group";
 const chatRouter = express.Router();
 
@@ -140,10 +145,20 @@ chatRouter
     .route("/message/forward/:messageId/group")
     .post(forwardMessageToGroup);
 chatRouter.route("/group").post(createGroup);
-chatRouter.route("/group/:groupId").delete(deleteGroup);
+chatRouter
+    .route("/group/:groupId/:token")
+    .get(getGroupData)
+    .delete(deleteGroup);
 chatRouter.route("/group/:groupId/leave").post(leaveGroup);
 chatRouter.route("/group/:groupId/user/add").post(addUserToGroup);
 chatRouter.route("/group/:groupId/user/remove").post(removeUserFromGroup);
+chatRouter.route("/group/:groupId/settings/").post(updateGroupSettings);
+chatRouter
+    .route("/group/:groupId/settings/link-token/")
+    .get(getGroupLinkToken)
+    .post(resetGroupLinkToken);
+chatRouter.route("/group/:groupId/join").post(joinGroup);
+
 /**
  * @openapi
  * /chat/message/{messageId}/react:
