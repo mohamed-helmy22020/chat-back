@@ -19,7 +19,6 @@ import User from "../models/User";
 import { flattenObject } from "../utils";
 
 const ALLOWED_GROUP_SETTING_PATHS = new Set([
-    "linkToken",
     "members.editGroupData",
     "members.sendNewMessages",
     "members.addOtherMembers",
@@ -126,13 +125,36 @@ export const updateGroupSettings = async (req: Request, res: Response) => {
     const flattenedGroupSettings = flattenObject(groupSettings);
 
     // 2. Build a safe $set update object
+    const newLinkToken = customAlphabet("1234567890abcdef", 15)();
     const update: Record<string, any> = {};
     for (const [path, value] of Object.entries(flattenedGroupSettings)) {
         if (ALLOWED_GROUP_SETTING_PATHS.has(path)) {
+            if (
+                path === "members.inviteViaLink" &&
+                !value &&
+                group.groupSettings.members.inviteViaLink
+            ) {
+                update["groupSettings.linkToken"] = newLinkToken;
+            }
             update[`groupSettings.${path}`] = value;
         }
     }
 
+    // turn off members invite via link when addOtherMembers turned off
+    if (
+        update["groupSettings.members.addOtherMembers"] === false &&
+        group.groupSettings.members.addOtherMembers
+    ) {
+        update["groupSettings.members.inviteViaLink"] = false;
+        update["groupSettings.linkToken"] = newLinkToken;
+    }
+    // prevent turn on members invite via link of addOtherMembers is turned off
+    if (
+        update["groupSettings.members.inviteViaLink"] &&
+        !group.groupSettings.members.addOtherMembers
+    ) {
+        update["groupSettings.members.inviteViaLink"] = false;
+    }
     if (Object.keys(update).length === 0) {
         res.status(StatusCodes.BAD_REQUEST).json({
             error: "No valid fields to update",
@@ -148,7 +170,6 @@ export const updateGroupSettings = async (req: Request, res: Response) => {
         { new: true, runValidators: true }
     );
 
-    console.log("emitting data");
     chatSocket
         .to(`conversation:${updatedGroup._id}`)
         .emit("groupSettingsUpdated", {
