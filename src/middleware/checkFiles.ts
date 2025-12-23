@@ -10,8 +10,8 @@ export const allowedVideoTypes = [
     "video/mkv",
     "video/webm",
 ];
-const MAX_PHOTO_SIZE = 5 * 1024 * 1024; // 5 MB
-const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100 MB
+export const MAX_PHOTO_SIZE = 5 * 1024 * 1024; // 5 MB
+export const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100 MB
 
 export const checkSocketPics = (media: {
     buffer: Buffer;

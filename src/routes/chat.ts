@@ -1,4 +1,5 @@
 import express from "express";
+import multer from "multer";
 import {
     addMessageReaction,
     deleteConversation,
@@ -20,8 +21,13 @@ import {
     leaveGroup,
     removeUserFromGroup,
     resetGroupLinkToken,
+    updateGroupData,
     updateGroupSettings,
 } from "../controllers/group";
+import { checkPicture } from "../middleware/checkFiles";
+const storage = multer.memoryStorage();
+const upload = multer({ storage, ...checkPicture });
+
 const chatRouter = express.Router();
 
 /**
@@ -145,6 +151,9 @@ chatRouter
     .route("/message/forward/:messageId/group")
     .post(forwardMessageToGroup);
 chatRouter.route("/group").post(createGroup);
+chatRouter
+    .route("/group/:groupId")
+    .post(upload.single("groupPicture"), updateGroupData);
 chatRouter
     .route("/group/:groupId/:token")
     .get(getGroupData)

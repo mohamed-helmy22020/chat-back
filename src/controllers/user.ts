@@ -8,6 +8,7 @@ import {
     NotFoundError,
     UnauthenticatedError,
 } from "../errors";
+import { MAX_PHOTO_SIZE } from "../middleware/checkFiles";
 import { getIO } from "../middleware/socketMiddleware";
 import FriendRequest from "../models/FriendRequest";
 import User, { IUser } from "../models/User";
@@ -23,7 +24,11 @@ export const updateUserData = async (req: Request, res: Response) => {
     const { name, email, newPassword, phone, currentPassword, bio, settings } =
         req.body;
     const { file: profilePicture } = req;
-
+    if (profilePicture?.buffer.length > MAX_PHOTO_SIZE) {
+        throw new BadRequestError(
+            "File size exceeds the maximum allowed size."
+        );
+    }
     const isPasswordCorrect = currentPassword
         ? await user.comparePassword(currentPassword)
         : false;

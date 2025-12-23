@@ -11,9 +11,10 @@ import { BadRequestError, UnauthenticatedError } from "../errors";
 import {
     allowedPictureTypes,
     allowedVideoTypes,
+    MAX_PHOTO_SIZE,
 } from "../middleware/checkFiles";
 import { getIO } from "../middleware/socketMiddleware";
-import Conversation from "../models/Conversation";
+import Conversation, { ConversationType } from "../models/Conversation";
 import Message from "../models/Message";
 import User from "../models/User";
 import { flattenObject } from "../utils";
@@ -50,6 +51,12 @@ export const getGroupData = async (req: Request, res: Response) => {
 export const createGroup = async (req: Request, res: Response) => {
     const user = req.user;
     const { name, desc } = req.body;
+    if (!name || !desc) {
+        throw new BadRequestError("Name and description are required");
+    }
+    if (name.length > 25) {
+        throw new BadRequestError("Group name is too long");
+    }
     const group = await (
         await Conversation.create({
             participants: [user._id],
@@ -105,6 +112,67 @@ export const joinGroup = async (req: Request, res: Response) => {
     res.status(StatusCodes.OK).json({
         success: true,
         msg: "You are now a member",
+    });
+};
+
+export const updateGroupData = async (req: Request, res: Response) => {
+    const chatSocket = getIO().of("/api/chat");
+    const user = req.user;
+    const { groupId } = req.params;
+    const { name, desc } = req.body;
+    const { file: groupPicture } = req;
+    if (groupPicture?.buffer.length > MAX_PHOTO_SIZE) {
+        throw new BadRequestError(
+            "File size exceeds the maximum allowed size."
+        );
+    }
+
+    const group = await Conversation.findOne({ _id: groupId, type: "group" });
+    if (!group) {
+        throw new BadRequestError("No group with this id");
+    }
+    if (
+        !group.groupSettings.members.editGroupData &&
+        group.admin.toString() !== user._id.toString()
+    ) {
+        throw new UnauthenticatedError("Only admins can update group data");
+    }
+
+    const groupData: Partial<ConversationType> = {};
+    if (name && name.length <= 15) {
+        groupData.groupName = name;
+    } else if (name && name.length > 15) {
+        throw new BadRequestError("Name should be less than 25 characters");
+    }
+
+    if (desc) {
+        groupData.desc = desc;
+    }
+
+    if (groupPicture) {
+        try {
+            const cldRes = await handleUploadPicFromBuffer(groupPicture, {
+                public_id: `group_picture_${user._id}`,
+                folder: "group_pictures",
+            });
+            groupData.groupImage = cldRes.secure_url;
+        } catch (error) {
+            throw new Error(error);
+        }
+    }
+
+    await Conversation.findByIdAndUpdate(group._id, groupData, {
+        new: true,
+        runValidators: true,
+    });
+
+    chatSocket.to(`conversation:${groupId}`).emit("groupDataUpdated", {
+        groupId,
+        groupData,
+    });
+    res.status(StatusCodes.OK).json({
+        success: true,
+        msg: "Group data updated.",
     });
 };
 
@@ -274,7 +342,10 @@ export const leaveGroup = async (req: Request, res: Response) => {
     }
 
     chatSocket.in(`user:${user._id}`).socketsLeave(`conversation:${groupId}`);
-
+    chatSocket.to(`conversation:${group._id}`).emit("deletedFromGroup", {
+        groupId: group._id,
+        userId: user._id,
+    });
     res.status(StatusCodes.OK).json({
         success: true,
         msg: "You are no longer a member",

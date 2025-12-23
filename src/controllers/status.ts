@@ -5,9 +5,11 @@ import {
     handleUploadPicFromBuffer,
     handleUploadVideoFromBuffer,
 } from "../config/cloudinary";
+import { BadRequestError } from "../errors";
 import {
     allowedPictureTypes,
     allowedVideoTypes,
+    MAX_VIDEO_SIZE,
 } from "../middleware/checkFiles";
 import { getIO } from "../middleware/socketMiddleware";
 import FriendRequest from "../models/FriendRequest";
@@ -63,10 +65,18 @@ export const createStatus = async (req: Request, res: Response) => {
     const content = req.body?.content;
     const { file: statusMedia } = req;
     if (!content && !statusMedia) {
-        res.status(StatusCodes.BAD_REQUEST).json({
-            message: "Content or media is required",
-        });
+        throw new BadRequestError("Content or media is required");
         return;
+    }
+    if (
+        (allowedVideoTypes.includes(statusMedia?.mimetype) &&
+            statusMedia?.size > MAX_VIDEO_SIZE) ||
+        (allowedVideoTypes.includes(statusMedia?.mimetype) &&
+            statusMedia?.size > MAX_VIDEO_SIZE * 10)
+    ) {
+        throw new BadRequestError(
+            "File size exceeds the maximum allowed size."
+        );
     }
     const _id = new mongoose.Types.ObjectId();
     const statusData = {
