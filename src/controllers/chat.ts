@@ -295,7 +295,8 @@ export const getConversationMessages = async (req: Request, res: Response) => {
     if (
         conversationLastMessage &&
         !conversationLastMessage.seen &&
-        conversationLastMessage.from._id.toString() !== user._id.toString()
+        conversationLastMessage.from._id.toString() !== user._id.toString() &&
+        conversation.type !== "group"
     ) {
         conversationLastMessage.seen = true;
         conversationLastMessage.seenAt = new Date();

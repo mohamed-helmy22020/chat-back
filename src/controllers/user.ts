@@ -183,7 +183,10 @@ export const addFriend = async (req: Request, res: Response) => {
         chatNamespace.to(`user:${userId}`).emit("newFriendRequest", {
             user: user.getData("findUser"),
         });
-        res.status(StatusCodes.OK).json({ success: true });
+        res.status(StatusCodes.OK).json({
+            success: true,
+            user: otherUser.getData("findUser"),
+        });
         return;
     }
 
