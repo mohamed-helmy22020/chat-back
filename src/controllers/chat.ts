@@ -18,7 +18,7 @@ import User from "../models/User";
 
 const getPrivateConversation = async (
     userIdA: mongoose.Types.ObjectId,
-    userIdB: mongoose.Types.ObjectId
+    userIdB: mongoose.Types.ObjectId,
 ): Promise<ConversationType> => {
     if (userIdA.toString() === userIdB.toString()) {
         throw new BadRequestError("No Conversation");
@@ -53,7 +53,7 @@ const getPrivateConversation = async (
                         select: "name userProfileImage email bio",
                     },
                 },
-            ])
+            ]),
         );
     }
 
@@ -76,12 +76,12 @@ export const sendPrivateMessage = async (
         };
         replyMessage?: mongoose.Types.ObjectId;
     },
-    ack?: (response: any) => void
+    ack?: (response: any) => void,
 ) => {
     const io = getIO();
     const chatNamespace = io.of("/api/chat");
     const user = await User.findById(
-        (socket.request as Request).user._id.toString()
+        (socket.request as Request).user._id.toString(),
     );
     const otherSide = await User.findById(to);
     if (!otherSide) {
@@ -96,7 +96,7 @@ export const sendPrivateMessage = async (
     }
     const conversation = await getPrivateConversation(
         user._id as mongoose.Types.ObjectId,
-        to
+        to,
     );
     const _id = new mongoose.Types.ObjectId();
     const messageData = {
@@ -151,7 +151,7 @@ export const sendPrivateMessage = async (
     ]);
 
     conversation.lastMessage = new mongoose.Types.ObjectId(
-        message._id.toString()
+        message._id.toString(),
     );
     await (
         await conversation.save()
@@ -184,7 +184,7 @@ export const sendPrivateMessage = async (
 export const sendTyping = async (
     socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
     to: mongoose.Types.ObjectId,
-    isTyping: boolean
+    isTyping: boolean,
 ) => {
     const user = (socket.request as Request).user;
     const otherSide = await User.findById(to);
@@ -199,7 +199,7 @@ export const sendTyping = async (
     }
     const conversation = await getPrivateConversation(
         user._id as mongoose.Types.ObjectId,
-        to
+        to,
     );
     socket.to(`user:${to}`).emit("typing", {
         conversationId: conversation._id,
@@ -249,7 +249,7 @@ export const getAllConversations = (req: Request, res: Response) => {
                             ...conv.getData(
                                 conv.admin?.toString() === user._id.toString()
                                     ? "admin"
-                                    : "user"
+                                    : "user",
                             ),
                             lastMessage:
                                 lastMessage?.createdAt > cutoff
@@ -264,7 +264,7 @@ export const getAllConversations = (req: Request, res: Response) => {
 export const getConversationMessages = async (req: Request, res: Response) => {
     const user = req.user;
     const { conversationId } = req.params;
-    const { before } = req.query; // ISO string of createdAt
+    const { before } = req.query;
 
     const LIMIT = Math.min(parseInt(req.query.limit as string, 10) || 20, 50);
 
@@ -286,7 +286,7 @@ export const getConversationMessages = async (req: Request, res: Response) => {
         !conversation.participants.includes(user._id as mongoose.Types.ObjectId)
     ) {
         throw new UnauthenticatedError(
-            "You can only get your conversation messages"
+            "You can only get your conversation messages",
         );
     }
 
@@ -363,7 +363,7 @@ export const addMessageReaction = async (req: Request, res: Response) => {
         throw new UnauthenticatedError("You can only react to your messages");
     }
     const existingReactIndex = message.reacts.findIndex(
-        (r) => r.user.toString() === user._id.toString()
+        (r) => r.user.toString() === user._id.toString(),
     );
     if (existingReactIndex !== -1) {
         if (message.reacts[existingReactIndex].react === react) {
@@ -471,7 +471,7 @@ export const getUserConversation = async (req: Request, res: Response) => {
     const conversation = await (
         await getPrivateConversation(
             user._id as mongoose.Types.ObjectId,
-            new mongoose.Types.ObjectId(otherSideUserId)
+            new mongoose.Types.ObjectId(otherSideUserId),
         )
     ).populate("participants", "name userProfileImage email bio");
     res.status(StatusCodes.OK).json({
@@ -482,7 +482,7 @@ export const getUserConversation = async (req: Request, res: Response) => {
 
 export const getUserConversationWithEmail = async (
     req: Request,
-    res: Response
+    res: Response,
 ) => {
     const user = req.user;
     const { email: otherSideEmail } = req.params;
@@ -496,7 +496,7 @@ export const getUserConversationWithEmail = async (
     const conversation = await (
         await getPrivateConversation(
             user._id as mongoose.Types.ObjectId,
-            new mongoose.Types.ObjectId(otherSide._id)
+            new mongoose.Types.ObjectId(otherSide._id),
         )
     ).populate("participants", "name userProfileImage email bio");
     res.status(StatusCodes.OK).json({
@@ -516,7 +516,7 @@ export const deleteConversation = async (req: Request, res: Response) => {
         !conversation.participants.includes(user._id as mongoose.Types.ObjectId)
     ) {
         throw new UnauthenticatedError(
-            "You can only delete your conversations"
+            "You can only delete your conversations",
         );
     }
 
@@ -533,12 +533,12 @@ export const deleteConversation = async (req: Request, res: Response) => {
 export const seeMessages = async (
     socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
     to: mongoose.Types.ObjectId,
-    ack: (response: any) => void
+    ack: (response: any) => void,
 ) => {
     const user = (socket.request as Request).user;
     const conversation = await getPrivateConversation(
         user._id as mongoose.Types.ObjectId,
-        to
+        to,
     );
     await Message.updateMany(
         {
@@ -549,7 +549,7 @@ export const seeMessages = async (
         {
             seen: true,
             seenAt: new Date(),
-        }
+        },
     );
     socket.to(`user:${to}`).emit("messagesSeen");
     if (ack) {
@@ -584,13 +584,13 @@ export const forwardMessageToPrivate = async (req: Request, res: Response) => {
         otherSide.blockList.includes(user._id as mongoose.Types.ObjectId)
     ) {
         throw new UnauthenticatedError(
-            "You can't forward this message to this user"
+            "You can't forward this message to this user",
         );
     }
 
     const conversation = await getPrivateConversation(
         user._id as mongoose.Types.ObjectId,
-        otherSide._id
+        otherSide._id,
     );
     const newMessage = await (
         await Message.create({

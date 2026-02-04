@@ -1,6 +1,7 @@
 import {
     v2 as cloudinary,
     UploadApiErrorResponse,
+    UploadApiOptions,
     UploadApiResponse,
 } from "cloudinary";
 cloudinary.config({
@@ -17,7 +18,7 @@ export type cloudinaryOptions = {
 export const handleUpload = async (
     file: string,
     public_id: string,
-    folder: string
+    folder: string,
 ) => {
     const res = await cloudinary.uploader.upload(file, {
         resource_type: "auto",
@@ -30,7 +31,7 @@ export const handleUpload = async (
 
 export const handleUploadPicFromBuffer = async (
     picture: any,
-    options: cloudinaryOptions
+    options: cloudinaryOptions,
 ) => {
     const b64 = Buffer.from(picture.buffer).toString("base64");
     let dataURI = "data:" + picture.mimetype + ";base64," + b64;
@@ -40,7 +41,7 @@ export const handleUploadPicFromBuffer = async (
 
 export const handleUploadVideoFromBuffer = async (
     video: any,
-    options: cloudinaryOptions
+    options: UploadApiOptions,
 ): Promise<UploadApiResponse | UploadApiErrorResponse> => {
     return await new Promise((resolve, reject) => {
         cloudinary.uploader
@@ -49,11 +50,6 @@ export const handleUploadVideoFromBuffer = async (
                     resource_type: "video",
                     public_id: options.public_id,
                     folder: `chat-app/${options.folder}`,
-                    transformation: [
-                        {
-                            duration: 60,
-                        },
-                    ],
                     timeout: 60000,
                 },
                 (error, uploadResult) => {
@@ -61,7 +57,7 @@ export const handleUploadVideoFromBuffer = async (
                         return reject(error);
                     }
                     return resolve(uploadResult);
-                }
+                },
             )
             .end(video.buffer);
     });

@@ -5,7 +5,7 @@ const errorHandlerMiddleware = (
     err: any,
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
 ) => {
     console.log({ err });
     let customError = {
@@ -14,7 +14,7 @@ const errorHandlerMiddleware = (
     };
 
     if (err.code === "LIMIT_UNEXPECTED_FILE") {
-        customError.msg = "Upload only one file.";
+        customError.msg = "Error with uploading the file.";
         customError.statusCode = StatusCodes.BAD_REQUEST;
     }
 

@@ -75,7 +75,7 @@ export const createStatus = async (req: Request, res: Response) => {
             statusMedia?.size > MAX_VIDEO_SIZE * 10)
     ) {
         throw new BadRequestError(
-            "File size exceeds the maximum allowed size."
+            "File size exceeds the maximum allowed size.",
         );
     }
     const _id = new mongoose.Types.ObjectId();
@@ -100,6 +100,11 @@ export const createStatus = async (req: Request, res: Response) => {
                 const cldRes = await handleUploadVideoFromBuffer(statusMedia, {
                     public_id: `status_${user._id}_${_id}`,
                     folder: "status",
+                    transformation: [
+                        {
+                            duration: 60,
+                        },
+                    ],
                 });
                 statusData.mediaUrl = cldRes.secure_url;
                 statusData.mediaType = "video";
